@@ -1,0 +1,3170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sandow">
+<meta name="theme-color" content="#050e1a">
+<title>Sandow</title>
+
+<!-- PWA Manifest inline via JS -->
+<link rel="manifest" href="#" id="manifest-link">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600&display=swap');
+
+:root {
+  --ocean-deep: #050e1a;
+  --ocean-mid: #0a1f35;
+  --ocean-light: #0d2d4a;
+  --teal: #00d4aa;
+  --teal-dim: #00a080;
+  --teal-glow: rgba(0,212,170,0.15);
+  --amber: #f5a623;
+  --red-alert: #ff4757;
+  --text-primary: #e8f4f0;
+  --text-secondary: #7a9ba8;
+  --text-muted: #3a5a68;
+  --border: rgba(0,212,170,0.15);
+  --card-bg: rgba(13,45,74,0.6);
+  --font-mono: 'Space Mono', monospace;
+  --font-body: 'Outfit', sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--ocean-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* Ocean background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,60,100,0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(0,212,170,0.06) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Animated wave lines */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 200px;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 18px,
+    rgba(0,212,170,0.03) 18px,
+    rgba(0,212,170,0.03) 19px
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: wave-drift 8s ease-in-out infinite alternate;
+}
+
+@keyframes wave-drift {
+  from { transform: translateY(0px); }
+  to { transform: translateY(-12px); }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+/* ── STATUS BAR ── */
+.status-bar {
+  padding: calc(var(--safe-top) + 10px) 20px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.app-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+
+.loc-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border);
+}
+
+.loc-btn:active { opacity: 0.6; }
+
+/* ── SCROLL CONTENT ── */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: calc(70px + var(--safe-bottom));
+  scroll-snap-type: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-content::-webkit-scrollbar { display: none; }
+
+/* ── PAGES ── */
+.page { display: none; padding: 0 16px; }
+.page.active { display: block; }
+
+/* ── SCORE HERO ── */
+.score-hero {
+  text-align: center;
+  padding: 20px 0 24px;
+  position: relative;
+}
+
+.score-circle-wrap {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 16px;
+}
+
+.score-circle-wrap svg {
+  position: absolute;
+  top: 0; left: 0;
+  transform: rotate(-90deg);
+}
+
+.score-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-number {
+  font-family: var(--font-mono);
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--teal);
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(0,212,170,0.5);
+}
+
+.score-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+.score-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.score-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── ALERT BANNER ── */
+.alert-banner {
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 0.5px solid;
+  animation: fadeSlide 0.4s ease;
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-banner.good {
+  background: rgba(0,212,170,0.08);
+  border-color: rgba(0,212,170,0.3);
+}
+
+.alert-banner.warn {
+  background: rgba(245,166,35,0.08);
+  border-color: rgba(245,166,35,0.3);
+}
+
+.alert-banner.bad {
+  background: rgba(255,71,87,0.08);
+  border-color: rgba(255,71,87,0.3);
+}
+
+.alert-icon { font-size: 20px; flex-shrink: 0; }
+.alert-title { font-size: 13px; font-weight: 600; }
+.alert-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* ── METRICS GRID ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.metric-card {
+  background: var(--card-bg);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+
+.metric-card.ok::before { background: var(--teal); }
+.metric-card.warn::before { background: var(--amber); }
+.metric-card.bad::before { background: var(--red-alert); }
+
+.metric-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.metric-unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-left: 2px;
+}
+
+.metric-status {
+  font-size: 10px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.metric-status.ok { color: var(--teal); }
+.metric-status.warn { color: var(--amber); }
+.metric-status.bad { color: var(--red-alert); }
+
+/* ── TIDE CHART ── */
+.section-card {
+  background: var(--card-bg);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.section-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.tide-chart {
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.tide-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.tide-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.5s ease;
+  min-height: 3px;
+}
+
+.tide-bar.past { background: var(--text-muted); }
+.tide-bar.current { background: var(--teal); box-shadow: 0 0 8px rgba(0,212,170,0.5); }
+.tide-bar.future { background: rgba(0,212,170,0.25); }
+.tide-bar.good-window { background: rgba(0,212,170,0.5); }
+
+.tide-time { font-size: 8px; color: var(--text-muted); }
+
+.tide-info {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.tide-stat {
+  text-align: center;
+}
+
+.tide-stat-val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal);
+}
+
+.tide-stat-label {
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── TURBIDITY HISTORY ── */
+.turbidity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.turb-day { font-size: 10px; color: var(--text-secondary); width: 28px; flex-shrink: 0; }
+
+.turb-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.turb-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.turb-val { font-size: 10px; font-family: var(--font-mono); width: 30px; text-align: right; flex-shrink: 0; }
+
+/* ── FORECAST PAGE ── */
+.forecast-header {
+  padding: 16px 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.forecast-day-card {
+  background: var(--card-bg);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.forecast-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.forecast-day-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.forecast-day-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.forecast-day-score {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.slots-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.slot-pill {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 0.5px solid;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.slot-pill.best {
+  background: rgba(0,212,170,0.15);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.slot-pill.good {
+  background: rgba(0,212,170,0.06);
+  border-color: rgba(0,212,170,0.3);
+  color: rgba(0,212,170,0.8);
+}
+
+.slot-pill.ok {
+  background: rgba(245,166,35,0.08);
+  border-color: rgba(245,166,35,0.3);
+  color: var(--amber);
+}
+
+.slot-pill.bad {
+  background: rgba(255,71,87,0.06);
+  border-color: rgba(255,71,87,0.2);
+  color: rgba(255,71,87,0.6);
+}
+
+.forecast-details {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--border);
+}
+
+.fc-detail {
+  font-size: 10px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ── PREFS PAGE ── */
+.prefs-header {
+  padding: 16px 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.pref-section-title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 16px 0 8px;
+}
+
+.pref-card {
+  background: var(--card-bg);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  margin-bottom: 12px;
+}
+
+.pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.04);
+}
+
+.pref-row:last-child { border-bottom: none; }
+
+.pref-row-label { font-size: 14px; }
+.pref-row-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle input { display: none; }
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--text-muted);
+  border-radius: 13px;
+  transition: background 0.25s;
+  cursor: pointer;
+}
+
+.toggle input:checked + .toggle-track { background: var(--teal); }
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.25s;
+  pointer-events: none;
+}
+
+.toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+/* Slider */
+.pref-slider-row {
+  padding: 12px 16px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.04);
+}
+
+.pref-slider-row:last-child { border-bottom: none; }
+
+.pref-slider-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.pref-slider-name { font-size: 14px; }
+.pref-slider-val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--teal);
+  font-weight: 700;
+}
+
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--text-muted);
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  background: var(--teal);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,212,170,0.4);
+}
+
+.loc-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.loc-input-row input {
+  flex: 1;
+  background: rgba(0,0,0,0.3);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.loc-input-row input:focus {
+  border-color: var(--teal);
+}
+
+.btn-primary {
+  background: var(--teal);
+  color: var(--ocean-deep);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.btn-primary:active { opacity: 0.7; }
+
+/* Time chips */
+.time-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+}
+
+.time-chip {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border);
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 0.15s;
+}
+
+.time-chip.active {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: rgba(0,212,170,0.1);
+}
+
+/* ── ALERTS PAGE ── */
+.alerts-header {
+  padding: 16px 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.upcoming-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.upcoming-alert:last-child { border-bottom: none; }
+
+.alert-time-badge {
+  background: rgba(0,212,170,0.1);
+  border: 0.5px solid rgba(0,212,170,0.3);
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  flex-shrink: 0;
+  min-width: 50px;
+}
+
+.alert-time-day {
+  font-size: 9px;
+  color: var(--teal);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.alert-time-hour {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--teal);
+}
+
+.upcoming-title { font-size: 13px; font-weight: 500; }
+.upcoming-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.notif-permission-btn {
+  width: 100%;
+  background: rgba(0,212,170,0.1);
+  border: 0.5px solid rgba(0,212,170,0.4);
+  border-radius: 14px;
+  padding: 16px;
+  color: var(--teal);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+  text-align: center;
+  transition: background 0.15s;
+}
+
+.notif-permission-btn:active { background: rgba(0,212,170,0.2); }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  padding: 8px 16px calc(8px + var(--safe-bottom));
+  display: flex;
+  justify-content: space-around;
+  background: rgba(5,14,26,0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid var(--border);
+  z-index: 100;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.15s;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  min-width: 60px;
+}
+
+.nav-item.active { color: var(--teal); }
+.nav-item:active { transform: scale(0.92); }
+
+.nav-icon { font-size: 20px; }
+.nav-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* ── LOADING STATE ── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--ocean-deep);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  transition: opacity 0.5s ease;
+}
+
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+.loading-logo {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: var(--teal);
+  margin-bottom: 32px;
+}
+
+.loading-bar-wrap {
+  width: 120px;
+  height: 2px;
+  background: var(--text-muted);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.loading-bar {
+  height: 100%;
+  background: var(--teal);
+  border-radius: 1px;
+  animation: loading 2s ease-in-out forwards;
+}
+
+@keyframes loading {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.loading-status {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+  height: 16px;
+  text-align: center;
+}
+
+/* ── MISC ── */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.tag-pill.good { background: rgba(0,212,170,0.15); color: var(--teal); }
+.tag-pill.warn { background: rgba(245,166,35,0.15); color: var(--amber); }
+.tag-pill.bad { background: rgba(255,71,87,0.12); color: var(--red-alert); }
+
+.divider {
+  height: 0.5px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+.spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Install banner */
+.install-banner {
+  background: rgba(0,212,170,0.08);
+  border: 0.5px solid rgba(0,212,170,0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.install-btn {
+  background: var(--teal);
+  color: var(--ocean-deep);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── SPOTS PAGE ── */
+.spots-header {
+  padding: 16px 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spots-header-title { font-size: 18px; font-weight: 600; }
+
+.btn-add-spot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,212,170,0.12);
+  border: 0.5px solid rgba(0,212,170,0.4);
+  border-radius: 20px;
+  padding: 6px 14px;
+  color: var(--teal);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-add-spot:active { background: rgba(0,212,170,0.22); }
+
+.spot-card {
+  background: var(--card-bg);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.3s ease;
+}
+
+.spot-card.active-spot {
+  border-color: rgba(0,212,170,0.45);
+}
+
+.spot-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+
+.spot-card.score-great::before { background: var(--teal); }
+.spot-card.score-good::before { background: #7ecf9f; }
+.spot-card.score-ok::before { background: var(--amber); }
+.spot-card.score-bad::before { background: var(--red-alert); }
+
+.spot-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.spot-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.spot-loc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+.spot-score-badge {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: right;
+  line-height: 1;
+}
+
+.spot-score-sub {
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 2px;
+}
+
+.spot-conditions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.spot-cond-chip {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.spot-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.spot-action-btn {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+}
+
+.spot-action-btn:active { opacity: 0.6; }
+
+.spot-action-btn.primary {
+  border-color: rgba(0,212,170,0.4);
+  color: var(--teal);
+}
+
+.spot-action-btn.danger {
+  border-color: rgba(255,71,87,0.3);
+  color: var(--red-alert);
+}
+
+.spot-best-window {
+  background: rgba(0,212,170,0.07);
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.spot-best-window strong { color: var(--teal); font-weight: 600; }
+
+.empty-spots {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+}
+
+.empty-spots-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-spots-title { font-size: 16px; font-weight: 500; color: var(--text-primary); margin-bottom: 6px; }
+.empty-spots-sub { font-size: 12px; line-height: 1.6; }
+
+/* ── ADD SPOT MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 500;
+  align-items: flex-end;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal-sheet {
+  background: var(--ocean-mid);
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.modal-field {
+  margin-bottom: 14px;
+}
+
+.modal-field label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.modal-field input, .modal-field textarea {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.modal-field input:focus, .modal-field textarea:focus {
+  border-color: var(--teal);
+}
+
+.modal-field textarea { resize: none; min-height: 60px; }
+
+.modal-field-row {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-field-row .modal-field { flex: 1; }
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btn-cancel {
+  flex: 1;
+  background: none;
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-confirm {
+  flex: 2;
+  background: var(--teal);
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--ocean-deep);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── SCHEDULE (créneaux) ── */
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.day-chip {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  border: 0.5px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.day-chip.active {
+  background: rgba(0,212,170,0.15);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.schedule-slot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.schedule-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,0.2);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.schedule-slot.active {
+  background: rgba(0,212,170,0.1);
+  border-color: rgba(0,212,170,0.4);
+}
+
+.schedule-slot-icon { font-size: 18px; }
+
+.schedule-slot-info { flex: 1; }
+
+.schedule-slot-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.schedule-slot-hours {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.schedule-slot-check {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.schedule-slot.active .schedule-slot-check {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--ocean-deep);
+}
+
+/* Alert advance notice */
+.notice-chips {
+  display: flex;
+  gap: 6px;
+}
+
+.notice-chip {
+  flex: 1;
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.notice-chip.active {
+  background: rgba(0,212,170,0.12);
+  border-color: rgba(0,212,170,0.5);
+  color: var(--teal);
+}
+
+.score-min-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div class="loading-overlay" id="loading">
+  <div class="loading-logo">SANDOW</div>
+  <div class="loading-bar-wrap">
+    <div class="loading-bar"></div>
+  </div>
+  <div class="loading-status" id="loading-status">Connexion météo marine…</div>
+</div>
+
+<div class="app" id="app" style="opacity:0;transition:opacity 0.5s">
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="app-name">SANDOW</div>
+    <button class="loc-btn" onclick="openLocModal()" id="loc-btn">
+      <span>📍</span>
+      <span id="loc-name">Marseille</span>
+    </button>
+    <div style="font-size:11px;color:var(--text-secondary);font-family:var(--font-mono)" id="update-time">--:--</div>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="scroll-content" id="scroll-content">
+
+    <!-- ═══════════ PAGE: DASHBOARD ═══════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- Install banner (shown on mobile) -->
+      <div class="install-banner" id="install-banner" style="display:none">
+        <div>
+          <div style="font-size:12px;font-weight:600">Installer sur l'écran d'accueil</div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-top:2px">Accès rapide + notifications</div>
+        </div>
+        <button class="install-btn" onclick="triggerInstall()">Installer</button>
+      </div>
+
+      <!-- Score hero -->
+      <div class="score-hero fade-in">
+        <div class="score-circle-wrap">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <!-- Background track -->
+            <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+            <!-- Score arc -->
+            <circle cx="80" cy="80" r="66" fill="none"
+              stroke="url(#scoreGrad)" stroke-width="10"
+              stroke-linecap="round"
+              id="score-arc"
+              stroke-dasharray="414.69"
+              stroke-dashoffset="414.69"/>
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00d4aa"/>
+                <stop offset="100%" stop-color="#00ffcc"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="score-inner">
+            <div class="score-number" id="score-num">—</div>
+            <div class="score-sub">/ 100</div>
+          </div>
+        </div>
+        <div class="score-label" id="score-label">Chargement…</div>
+        <div class="score-detail" id="score-detail"></div>
+      </div>
+
+      <!-- Alert -->
+      <div id="main-alert"></div>
+
+      <!-- Metrics -->
+      <div class="metrics-grid" id="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">🌬️ Vent</div>
+          <div class="metric-value"><span id="wind-val">—</span><span class="metric-unit">km/h</span></div>
+          <div class="metric-status" id="wind-status">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">🌊 Houle</div>
+          <div class="metric-value"><span id="wave-val">—</span><span class="metric-unit">m</span></div>
+          <div class="metric-status" id="wave-status">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">👁️ Visibilité</div>
+          <div class="metric-value"><span id="vis-val">—</span><span class="metric-unit">m</span></div>
+          <div class="metric-status" id="vis-status">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">🌡️ Eau</div>
+          <div class="metric-value"><span id="temp-val">—</span><span class="metric-unit">°C</span></div>
+          <div class="metric-status" id="temp-status">—</div>
+        </div>
+      </div>
+
+      <!-- Tide chart -->
+      <div class="section-card fade-in">
+        <div class="section-label">Marée du jour</div>
+        <div class="tide-chart" id="tide-chart"></div>
+        <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--text-muted);margin-bottom:10px" id="tide-times"></div>
+        <div class="tide-info" id="tide-info">
+          <div class="tide-stat">
+            <div class="tide-stat-val" id="tide-coef">—</div>
+            <div class="tide-stat-label">Coefficient</div>
+          </div>
+          <div class="tide-stat">
+            <div class="tide-stat-val" id="tide-state">—</div>
+            <div class="tide-stat-label">Phase</div>
+          </div>
+          <div class="tide-stat">
+            <div class="tide-stat-val" id="tide-next">—</div>
+            <div class="tide-stat-label">Prochain BM</div>
+          </div>
+          <div class="tide-stat">
+            <div class="tide-stat-val" id="tide-height">—</div>
+            <div class="tide-stat-label">Hauteur</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Turbidity (last 7 days) -->
+      <div class="section-card fade-in">
+        <div class="section-label">Clarté de l'eau — 7 derniers jours</div>
+        <div id="turbidity-rows"></div>
+        <div style="font-size:10px;color:var(--text-secondary);margin-top:8px" id="turb-trend"></div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════ PAGE: PRÉVISIONS ═══════════ -->
+    <div class="page" id="page-forecast">
+      <div class="forecast-header">Prévisions 7 jours</div>
+      <div id="forecast-list"></div>
+    </div>
+
+    <!-- ═══════════ PAGE: SPOTS ═══════════ -->
+    <div class="page" id="page-spots">
+      <div class="spots-header">
+        <div class="spots-header-title">Mes spots</div>
+        <button class="btn-add-spot" onclick="openAddSpotModal()">
+          <span style="font-size:16px">+</span> Ajouter
+        </button>
+      </div>
+
+      <div style="font-size:11px;color:var(--text-secondary);margin-bottom:14px;margin-top:4px">
+        Score en temps réel selon la météo du spot
+      </div>
+
+      <div id="spots-list">
+        <div class="empty-spots">
+          <div class="empty-spots-icon">🌊</div>
+          <div class="empty-spots-title">Aucun spot enregistré</div>
+          <div class="empty-spots-sub">Ajoutez vos spots favoris pour voir leurs conditions en un coup d'œil et recevoir des alertes personnalisées.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE: CRÉNEAUX ═══════════ -->
+    <div class="page" id="page-schedule">
+      <div style="padding: 16px 0 4px; font-size: 18px; font-weight: 600;">Mes créneaux</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">Définissez quand vous pouvez aller chasser. Vous recevrez une alerte J-1 ou J-2 si les conditions sont bonnes.</div>
+
+      <div class="pref-section-title">Jours disponibles</div>
+      <div class="pref-card" style="padding:14px 16px">
+        <div class="schedule-grid" id="schedule-days">
+          <div class="day-chip active" data-day="1" onclick="toggleDay(this)">L</div>
+          <div class="day-chip" data-day="2" onclick="toggleDay(this)">M</div>
+          <div class="day-chip" data-day="3" onclick="toggleDay(this)">M</div>
+          <div class="day-chip" data-day="4" onclick="toggleDay(this)">J</div>
+          <div class="day-chip" data-day="5" onclick="toggleDay(this)">V</div>
+          <div class="day-chip active" data-day="6" onclick="toggleDay(this)">S</div>
+          <div class="day-chip active" data-day="0" onclick="toggleDay(this)">D</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:6px" id="days-summary">Lun · Sam · Dim sélectionnés</div>
+      </div>
+
+      <div class="pref-section-title">Créneaux horaires</div>
+      <div class="pref-card" style="padding:12px">
+        <div class="schedule-slot-grid" id="schedule-slots">
+          <div class="schedule-slot" data-slot="matin" onclick="toggleScheduleSlot(this)">
+            <div class="schedule-slot-icon">🌅</div>
+            <div class="schedule-slot-info">
+              <div class="schedule-slot-name">Matin</div>
+              <div class="schedule-slot-hours">6h – 10h</div>
+            </div>
+            <div class="schedule-slot-check"></div>
+          </div>
+          <div class="schedule-slot active" data-slot="midi" onclick="toggleScheduleSlot(this)">
+            <div class="schedule-slot-icon">☀️</div>
+            <div class="schedule-slot-info">
+              <div class="schedule-slot-name">Midi</div>
+              <div class="schedule-slot-hours">11h – 14h</div>
+            </div>
+            <div class="schedule-slot-check">✓</div>
+          </div>
+          <div class="schedule-slot" data-slot="aprem" onclick="toggleScheduleSlot(this)">
+            <div class="schedule-slot-icon">🏖️</div>
+            <div class="schedule-slot-info">
+              <div class="schedule-slot-name">Après-midi</div>
+              <div class="schedule-slot-hours">15h – 17h</div>
+            </div>
+            <div class="schedule-slot-check"></div>
+          </div>
+          <div class="schedule-slot active" data-slot="soir" onclick="toggleScheduleSlot(this)">
+            <div class="schedule-slot-icon">🌇</div>
+            <div class="schedule-slot-info">
+              <div class="schedule-slot-name">Soir</div>
+              <div class="schedule-slot-hours">18h – 21h</div>
+            </div>
+            <div class="schedule-slot-check">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pref-section-title">Préavis d'alerte</div>
+      <div class="pref-card" style="padding:14px 16px">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Recevoir la notification combien de temps à l'avance ?</div>
+        <div class="notice-chips" id="notice-chips">
+          <div class="notice-chip" data-notice="same" onclick="toggleNotice(this)">Jour J</div>
+          <div class="notice-chip active" data-notice="j1" onclick="toggleNotice(this)">J-1</div>
+          <div class="notice-chip active" data-notice="j2" onclick="toggleNotice(this)">J-2</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:10px" id="notice-summary">
+          Alertes envoyées la veille (18h) et J-2 (8h du matin)
+        </div>
+      </div>
+
+      <div class="pref-section-title">Score minimum pour alerter</div>
+      <div class="pref-card">
+        <div class="pref-slider-row">
+          <div class="pref-slider-top">
+            <div class="pref-slider-name">Score minimum</div>
+            <div class="pref-slider-val"><span id="score-min-val">65</span>/100</div>
+          </div>
+          <input type="range" min="40" max="90" step="5" value="65" id="score-min-slider"
+            oninput="document.getElementById('score-min-val').textContent=this.value;saveSchedule()">
+        </div>
+      </div>
+
+      <div class="section-card" style="margin-top:4px">
+        <div class="section-label">Prochains créneaux prévus</div>
+        <div id="schedule-upcoming"></div>
+      </div>
+
+      <div style="height:12px"></div>
+    </div>
+
+
+    <div class="page" id="page-prefs">
+      <div class="prefs-header">Préférences</div>
+
+      <div class="pref-section-title">Localisation</div>
+      <div class="pref-card" style="padding:14px">
+        <div class="loc-input-row">
+          <input type="text" id="city-input" placeholder="Ville ou coordonnées GPS…" value="Marseille">
+          <button class="btn-primary" onclick="applyLocation()">OK</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:8px">
+          Ou <span style="color:var(--teal);cursor:pointer" onclick="useGPS()">utiliser ma position GPS</span>
+        </div>
+      </div>
+
+      <div class="pref-section-title">Créneaux préférés</div>
+      <div class="pref-card">
+        <div style="padding:10px 16px 4px;font-size:12px;color:var(--text-secondary)">Sélectionner vos créneaux favoris :</div>
+        <div class="time-chips" id="time-chips">
+          <div class="time-chip" data-slot="6h" onclick="toggleSlot(this)">6h–8h</div>
+          <div class="time-chip active" data-slot="midi" onclick="toggleSlot(this)">11h–14h</div>
+          <div class="time-chip" data-slot="aprem" onclick="toggleSlot(this)">15h–17h</div>
+          <div class="time-chip active" data-slot="soir" onclick="toggleSlot(this)">18h–21h</div>
+        </div>
+      </div>
+
+      <div class="pref-section-title">Seuils acceptables</div>
+      <div class="pref-card">
+        <div class="pref-slider-row">
+          <div class="pref-slider-top">
+            <div class="pref-slider-name">Vent maximum</div>
+            <div class="pref-slider-val"><span id="wind-max-val">15</span> km/h</div>
+          </div>
+          <input type="range" min="5" max="40" step="1" value="15" id="wind-max-slider"
+            oninput="document.getElementById('wind-max-val').textContent=this.value;savePrefs()">
+        </div>
+        <div class="pref-slider-row">
+          <div class="pref-slider-top">
+            <div class="pref-slider-name">Houle maximum</div>
+            <div class="pref-slider-val"><span id="wave-max-val">0.6</span> m</div>
+          </div>
+          <input type="range" min="0.2" max="2.5" step="0.1" value="0.6" id="wave-max-slider"
+            oninput="document.getElementById('wave-max-val').textContent=parseFloat(this.value).toFixed(1);savePrefs()">
+        </div>
+        <div class="pref-slider-row">
+          <div class="pref-slider-top">
+            <div class="pref-slider-name">Coeff. marée minimum</div>
+            <div class="pref-slider-val"><span id="coef-min-val">60</span></div>
+          </div>
+          <input type="range" min="20" max="120" step="5" value="60" id="coef-min-slider"
+            oninput="document.getElementById('coef-min-val').textContent=this.value;savePrefs()">
+        </div>
+      </div>
+
+      <div class="pref-section-title">Options</div>
+      <div class="pref-card">
+        <div class="pref-row">
+          <div>
+            <div class="pref-row-label">Préférer marée descendante</div>
+            <div class="pref-row-sub">+10 pts si phase descendante</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="pref-tide-desc" checked onchange="savePrefs()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="pref-row">
+          <div>
+            <div class="pref-row-label">Bonus marée haute</div>
+            <div class="pref-row-sub">+5 pts si hauteur &gt; 4m</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="pref-high-tide" onchange="savePrefs()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="pref-row">
+          <div>
+            <div class="pref-row-label">Éviter après pluie récente</div>
+            <div class="pref-row-sub">−15 pts si pluie &lt; 24h</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="pref-no-rain" checked onchange="savePrefs()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE: ALERTES ═══════════ -->
+    <div class="page" id="page-alerts">
+      <div class="alerts-header">Alertes & notifications</div>
+
+      <!-- Notification permission -->
+      <button class="notif-permission-btn" id="notif-btn" onclick="requestNotifPermission()">
+        🔔 Activer les notifications push
+      </button>
+
+      <div class="pref-section-title">Types d'alertes</div>
+      <div class="pref-card">
+        <div class="pref-row">
+          <div>
+            <div class="pref-row-label">Fenêtre optimale</div>
+            <div class="pref-row-sub">Alerté 2h avant un créneau score &gt; 75</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="alert-optimal" checked onchange="savePrefs()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="pref-row">
+          <div>
+            <div class="pref-row-label">Résumé matinal (7h)</div>
+            <div class="pref-row-sub">Rapport des conditions du jour</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="alert-morning" checked onchange="savePrefs()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="pref-row">
+          <div>
+            <div class="pref-row-label">Dégradation soudaine</div>
+            <div class="pref-row-sub">Levée de vent ou mer agitée imprévue</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="alert-danger" checked onchange="savePrefs()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="pref-row">
+          <div>
+            <div class="pref-row-label">Eau claire après pluie</div>
+            <div class="pref-row-sub">Visibilité en amélioration (J+2)</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="alert-clear" checked onchange="savePrefs()">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="pref-section-title">Prochaines alertes planifiées</div>
+      <div class="section-card">
+        <div id="upcoming-alerts">
+          <div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px">
+            <span class="spin">⟳</span> Calcul en cours…
+          </div>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+    </div>
+
+  </div><!-- end scroll-content -->
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav" style="padding-left:4px;padding-right:4px">
+    <button class="nav-item active" onclick="showPage('dashboard',this)" id="nav-dashboard">
+      <span class="nav-icon">🎯</span>
+      <span class="nav-label">Score</span>
+    </button>
+    <button class="nav-item" onclick="showPage('forecast',this)" id="nav-forecast">
+      <span class="nav-icon">📅</span>
+      <span class="nav-label">Prévisions</span>
+    </button>
+    <button class="nav-item" onclick="showPage('spots',this)" id="nav-spots">
+      <span class="nav-icon">📍</span>
+      <span class="nav-label">Spots</span>
+    </button>
+    <button class="nav-item" onclick="showPage('schedule',this)" id="nav-schedule">
+      <span class="nav-icon">🗓️</span>
+      <span class="nav-label">Créneaux</span>
+    </button>
+    <button class="nav-item" onclick="showPage('prefs',this)" id="nav-prefs">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Réglages</span>
+    </button>
+  </nav>
+
+</div><!-- end app -->
+
+<!-- Add/Edit Spot Modal -->
+<div class="modal-overlay" id="spot-modal">
+  <div class="modal-sheet">
+    <div class="modal-title" id="spot-modal-title">Nouveau spot</div>
+
+    <div class="modal-field">
+      <label>Nom du spot</label>
+      <input type="text" id="spot-name-input" placeholder="Ex: Calanque de Sormiou…">
+    </div>
+
+    <div class="modal-field-row">
+      <div class="modal-field">
+        <label>Latitude</label>
+        <input type="number" id="spot-lat-input" placeholder="43.2965" step="0.0001">
+      </div>
+      <div class="modal-field">
+        <label>Longitude</label>
+        <input type="number" id="spot-lon-input" placeholder="5.3698" step="0.0001">
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text-secondary);margin:-8px 0 12px;cursor:pointer" onclick="useGPSForSpot()">
+      📍 Utiliser ma position GPS actuelle
+    </div>
+
+    <div class="modal-field">
+      <label>Notes (optionnel)</label>
+      <textarea id="spot-notes-input" placeholder="Type de fond, profondeur, espèces…"></textarea>
+    </div>
+
+    <div class="modal-field">
+      <label>Ville de référence météo</label>
+      <input type="text" id="spot-city-input" placeholder="Ville côtière la plus proche…">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSpotModal()">Annuler</button>
+      <button class="btn-confirm" onclick="saveSpot()">Enregistrer le spot</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="loc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:flex-end">
+  <div style="background:var(--ocean-mid);border-radius:20px 20px 0 0;padding:20px;width:100%;padding-bottom:calc(20px + env(safe-area-inset-bottom))">
+    <div style="font-size:16px;font-weight:600;margin-bottom:16px">Changer de lieu</div>
+    <div class="loc-input-row">
+      <input type="text" id="modal-city-input" placeholder="Ville, port, coordonnées…" style="font-size:15px">
+      <button class="btn-primary" onclick="applyLocationModal()">OK</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-secondary);margin-top:10px;cursor:pointer" onclick="useGPS()">
+      📍 Utiliser ma position GPS
+    </div>
+    <button onclick="closeLocModal()" style="margin-top:16px;width:100%;background:none;border:0.5px solid var(--border);border-radius:10px;padding:10px;color:var(--text-secondary);font-family:var(--font-body);font-size:14px;cursor:pointer">Annuler</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIGURATION
+// ══════════════════════════════════════════════
+const CITIES = {
+  'marseille': { lat: 43.2965, lon: 5.3698, name: 'Marseille' },
+  'nice': { lat: 43.7102, lon: 7.2620, name: 'Nice' },
+  'toulon': { lat: 43.1242, lon: 5.9280, name: 'Toulon' },
+  'cannes': { lat: 43.5528, lon: 7.0174, name: 'Cannes' },
+  'antibes': { lat: 43.5804, lon: 7.1281, name: 'Antibes' },
+  'biarritz': { lat: 43.4832, lon: -1.5586, name: 'Biarritz' },
+  'ajaccio': { lat: 41.9192, lon: 8.7386, name: 'Ajaccio' },
+  'bastia': { lat: 42.7027, lon: 9.4501, name: 'Bastia' },
+  'montpellier': { lat: 43.6119, lon: 3.8772, name: 'Montpellier' },
+  'sete': { lat: 43.4075, lon: 3.6975, name: 'Sète' },
+  'la rochelle': { lat: 46.1591, lon: -1.1520, name: 'La Rochelle' },
+};
+
+// Default prefs
+let prefs = {
+  city: 'marseille',
+  lat: 43.2965,
+  lon: 5.3698,
+  cityName: 'Marseille',
+  windMax: 15,
+  waveMax: 0.6,
+  coefMin: 60,
+  slots: ['midi', 'soir'],
+  prefTideDesc: true,
+  prefHighTide: false,
+  noRain: true,
+};
+
+let weatherData = null;
+let tideData = null;
+let deferredPrompt = null;
+
+// ══════════════════════════════════════════════
+// PWA SETUP
+// ══════════════════════════════════════════════
+// Inject manifest
+const manifestData = {
+  name: 'Sandow',
+  short_name: 'Sandow',
+  description: 'Conditions optimales pour la chasse sous-marine',
+  start_url: '/',
+  display: 'standalone',
+  background_color: '#050e1a',
+  theme_color: '#050e1a',
+  orientation: 'portrait',
+  icons: [{
+    src: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="#050e1a" rx="40"/><text y="130" x="40" font-size="110">🐟</text></svg>`),
+    sizes: '192x192',
+    type: 'image/svg+xml'
+  }]
+};
+const blob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+document.getElementById('manifest-link').href = URL.createObjectURL(blob);
+
+// Capture install prompt
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('install-banner').style.display = 'none';
+    });
+  }
+}
+
+// ══════════════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════════════
+function loadPrefs() {
+  try {
+    const saved = localStorage.getItem('sandow-prefs');
+    if (saved) {
+      const p = JSON.parse(saved);
+      prefs = { ...prefs, ...p };
+      applyPrefsToUI();
+    }
+  } catch(e) {}
+}
+
+function savePrefs() {
+  prefs.windMax = parseInt(document.getElementById('wind-max-slider').value);
+  prefs.waveMax = parseFloat(document.getElementById('wave-max-slider').value);
+  prefs.coefMin = parseInt(document.getElementById('coef-min-slider').value);
+  prefs.prefTideDesc = document.getElementById('pref-tide-desc').checked;
+  prefs.prefHighTide = document.getElementById('pref-high-tide').checked;
+  prefs.noRain = document.getElementById('pref-no-rain').checked;
+  prefs.slots = Array.from(document.querySelectorAll('.time-chip.active')).map(c => c.dataset.slot);
+  try { localStorage.setItem('sandow-prefs', JSON.stringify(prefs)); } catch(e) {}
+}
+
+function applyPrefsToUI() {
+  document.getElementById('wind-max-slider').value = prefs.windMax;
+  document.getElementById('wind-max-val').textContent = prefs.windMax;
+  document.getElementById('wave-max-slider').value = prefs.waveMax;
+  document.getElementById('wave-max-val').textContent = prefs.waveMax.toFixed(1);
+  document.getElementById('coef-min-slider').value = prefs.coefMin;
+  document.getElementById('coef-min-val').textContent = prefs.coefMin;
+  document.getElementById('pref-tide-desc').checked = prefs.prefTideDesc;
+  document.getElementById('pref-high-tide').checked = prefs.prefHighTide;
+  document.getElementById('pref-no-rain').checked = prefs.noRain;
+  document.getElementById('city-input').value = prefs.cityName;
+  document.getElementById('loc-name').textContent = prefs.cityName;
+
+  document.querySelectorAll('.time-chip').forEach(c => {
+    c.classList.toggle('active', prefs.slots.includes(c.dataset.slot));
+  });
+}
+
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('scroll-content').scrollTop = 0;
+}
+
+function toggleSlot(el) {
+  el.classList.toggle('active');
+  savePrefs();
+}
+
+// ══════════════════════════════════════════════
+// LOCATION
+// ══════════════════════════════════════════════
+function openLocModal() {
+  const m = document.getElementById('loc-modal');
+  m.style.display = 'flex';
+  document.getElementById('modal-city-input').value = prefs.cityName;
+  setTimeout(() => document.getElementById('modal-city-input').focus(), 100);
+}
+
+function closeLocModal() {
+  document.getElementById('loc-modal').style.display = 'none';
+}
+
+function applyLocation() {
+  const val = document.getElementById('city-input').value.trim();
+  resolveCity(val);
+}
+
+function applyLocationModal() {
+  const val = document.getElementById('modal-city-input').value.trim();
+  closeLocModal();
+  resolveCity(val);
+}
+
+function resolveCity(val) {
+  const key = val.toLowerCase().trim();
+  if (CITIES[key]) {
+    const c = CITIES[key];
+    prefs.lat = c.lat; prefs.lon = c.lon; prefs.cityName = c.name; prefs.city = key;
+  } else {
+    // Geocode via Open-Meteo geocoding API
+    setLoadingStatus('Recherche de ' + val + '…');
+    fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(val)}&count=1&language=fr&format=json`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.results && d.results.length > 0) {
+          const r = d.results[0];
+          prefs.lat = r.latitude;
+          prefs.lon = r.longitude;
+          prefs.cityName = r.name;
+          prefs.city = val.toLowerCase();
+          document.getElementById('loc-name').textContent = prefs.cityName;
+          document.getElementById('city-input').value = prefs.cityName;
+          savePrefs();
+          fetchAllData();
+        } else {
+          alert('Lieu introuvable. Essayez un nom de ville côtière.');
+        }
+      })
+      .catch(() => alert('Erreur de géolocalisation. Vérifiez votre connexion.'));
+    return;
+  }
+  document.getElementById('loc-name').textContent = prefs.cityName;
+  document.getElementById('city-input').value = prefs.cityName;
+  savePrefs();
+  fetchAllData();
+}
+
+function useGPS() {
+  closeLocModal();
+  if (!navigator.geolocation) { alert('GPS non disponible.'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    prefs.lat = pos.coords.latitude;
+    prefs.lon = pos.coords.longitude;
+    // Reverse geocode
+    fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${prefs.lat},${prefs.lon}&count=1&language=fr`)
+      .catch(() => null);
+    prefs.cityName = `${prefs.lat.toFixed(2)}° N, ${Math.abs(prefs.lon).toFixed(2)}° ${prefs.lon >= 0 ? 'E' : 'W'}`;
+    document.getElementById('loc-name').textContent = prefs.cityName;
+    savePrefs();
+    fetchAllData();
+  }, () => alert('Accès GPS refusé.'));
+}
+
+// ══════════════════════════════════════════════
+// DATA FETCHING
+// ══════════════════════════════════════════════
+function setLoadingStatus(msg) {
+  const el = document.getElementById('loading-status');
+  if (el) el.textContent = msg;
+}
+
+async function fetchAllData() {
+  showLoading(true);
+  try {
+    await Promise.all([fetchWeather(), fetchTides()]);
+    renderDashboard();
+    renderForecast();
+    renderUpcomingAlerts();
+    renderScheduleUpcoming();
+    renderSpots();
+  } catch(e) {
+    console.error('Data fetch error:', e);
+    renderWithFallback();
+  }
+  showLoading(false);
+}
+
+function showLoading(show) {
+  const overlay = document.getElementById('loading');
+  const app = document.getElementById('app');
+  if (!show) {
+    overlay.classList.add('hidden');
+    app.style.opacity = '1';
+    setTimeout(() => overlay.style.display = 'none', 500);
+  }
+}
+
+async function fetchWeather() {
+  setLoadingStatus('Météo marine en cours…');
+  // Open-Meteo Marine API — free, no key required
+  const url = `https://marine-api.open-meteo.com/v1/marine?` +
+    `latitude=${prefs.lat}&longitude=${prefs.lon}` +
+    `&hourly=wave_height,wave_direction,wave_period,wind_wave_height,swell_wave_height` +
+    `&daily=wave_height_max,wind_wave_height_max` +
+    `&timezone=Europe%2FParis&forecast_days=8&past_days=7`;
+
+  // Also get atmospheric weather
+  const urlAtmo = `https://api.open-meteo.com/v1/forecast?` +
+    `latitude=${prefs.lat}&longitude=${prefs.lon}` +
+    `&hourly=wind_speed_10m,wind_direction_10m,precipitation,temperature_2m` +
+    `&daily=wind_speed_10m_max,precipitation_sum` +
+    `&timezone=Europe%2FParis&forecast_days=8&past_days=7`;
+
+  const [marineRes, atmoRes] = await Promise.all([
+    fetch(url).then(r => r.json()),
+    fetch(urlAtmo).then(r => r.json())
+  ]);
+
+  weatherData = { marine: marineRes, atmo: atmoRes };
+}
+
+async function fetchTides() {
+  setLoadingStatus('Données de marées…');
+  // WorldTides API (free tier available) — fallback to simulated
+  // Using stormglass.io free tier as primary, fallback to computed sinusoidal model
+  // Since we can't use API keys in client-side code safely, we use a deterministic tide model
+  tideData = computeTideModel(prefs.lat, prefs.lon);
+}
+
+// Sinusoidal tide model (M2 + S2 constituents approximation)
+function computeTideModel(lat, lon) {
+  const now = Date.now();
+  const M2 = 44714; // M2 period in seconds (12h25min)
+  const S2 = 43200; // S2 period in seconds (12h)
+  const amphM2 = 1.8 + Math.abs(Math.sin(lat * Math.PI / 180)) * 0.8;
+  const amphS2 = amphM2 * 0.35;
+  const phaseOffset = (lon / 360) * M2;
+
+  const getTideHeight = (timestamp) => {
+    const t = timestamp / 1000;
+    return amphM2 * Math.cos((2 * Math.PI * t / M2) + phaseOffset) +
+           amphS2 * Math.cos((2 * Math.PI * t / S2) + phaseOffset * 0.9);
+  };
+
+  // Generate hourly data for 24h
+  const hours = [];
+  const baseDay = new Date(); baseDay.setHours(0,0,0,0);
+  for (let i = 0; i < 24; i++) {
+    const ts = baseDay.getTime() + i * 3600000;
+    hours.push({ hour: i, height: getTideHeight(ts) });
+  }
+
+  // Find extremes
+  const extremes = [];
+  for (let i = 1; i < hours.length - 1; i++) {
+    const prev = hours[i-1].height, cur = hours[i].height, next = hours[i+1].height;
+    if (cur > prev && cur > next) extremes.push({ hour: i, height: cur, type: 'BM' });
+    if (cur < prev && cur < next) extremes.push({ hour: i, height: cur, type: 'BH' }); // inverted label for French convention
+  }
+
+  // Coefficient approximation (60-120 range based on spring/neap cycle 14.7 days)
+  const springCycle = 14.7 * 24 * 3600 * 1000;
+  const coef = Math.round(70 + 50 * Math.abs(Math.cos(2 * Math.PI * now / springCycle)));
+
+  // Current tide state
+  const currentHeight = getTideHeight(now);
+  const prevHeight = getTideHeight(now - 3600000);
+  const isDescending = currentHeight < prevHeight;
+
+  // Next low tide
+  const nowHour = new Date().getHours();
+  const nextLow = extremes.find(e => e.hour > nowHour && e.type === 'BH');
+
+  return {
+    hours,
+    extremes,
+    coef,
+    isDescending,
+    currentHeight,
+    nextLow: nextLow ? nextLow.hour : extremes[0]?.hour,
+    nextLowHeight: nextLow ? nextLow.height : extremes[0]?.height
+  };
+}
+
+// Sea water temperature estimation (SST from latitude/season)
+function estimateSST(lat, lon) {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const seasonalOffset = 7 * Math.sin(2 * Math.PI * (dayOfYear - 80) / 365);
+  const baseTemp = 28 - Math.abs(lat) * 0.4;
+  return Math.round((baseTemp + seasonalOffset) * 10) / 10;
+}
+
+// Visibility model from wave height + precipitation history
+function estimateVisibility(waveH, recentPrecip) {
+  let vis = 10;
+  if (waveH > 1.5) vis -= 5;
+  else if (waveH > 0.8) vis -= 2;
+  else if (waveH > 0.4) vis -= 1;
+  if (recentPrecip > 10) vis -= 4;
+  else if (recentPrecip > 3) vis -= 2;
+  return Math.max(1, Math.min(15, vis));
+}
+
+// ══════════════════════════════════════════════
+// SCORING ALGORITHM
+// ══════════════════════════════════════════════
+function computeScore(wind, waveH, tideCoef, isDescending, tideHeight, recentPrecip, hourSlot) {
+  let score = 100;
+  const reasons = [];
+
+  // Wind (40 pts max penalty)
+  if (wind > 30) { score -= 40; reasons.push('Vent fort (' + wind + ' km/h)'); }
+  else if (wind > 20) { score -= 25; reasons.push('Vent modéré (' + wind + ' km/h)'); }
+  else if (wind > prefs.windMax) { score -= 15; reasons.push('Vent au-dessus de votre seuil'); }
+  else if (wind <= 8) { reasons.push('Vent quasi nul ✓'); }
+
+  // Waves (30 pts max penalty)
+  if (waveH > 1.5) { score -= 30; reasons.push('Houle très forte (' + waveH.toFixed(1) + ' m)'); }
+  else if (waveH > 0.8) { score -= 20; reasons.push('Houle modérée'); }
+  else if (waveH > prefs.waveMax) { score -= 10; reasons.push('Houle au-dessus de votre seuil'); }
+  else { reasons.push('Mer calme ✓'); }
+
+  // Tide coefficient
+  if (tideCoef < prefs.coefMin) { score -= 8; }
+  else if (tideCoef > 90) { reasons.push('Coeff. favorable (' + tideCoef + ')'); }
+
+  // Tide phase bonus
+  if (prefs.prefTideDesc && isDescending) { score += 8; reasons.push('Marée descendante ✓'); }
+  if (prefs.prefHighTide && tideHeight > 3.5) { score += 5; }
+
+  // Recent rain penalty
+  if (prefs.noRain && recentPrecip > 5) {
+    score -= 15; reasons.push('Pluie récente (turbidité)');
+  }
+
+  // Preferred time slot bonus
+  const slotMap = { 'matin': [6,7,8], 'midi': [11,12,13,14], 'aprem': [15,16,17], 'soir': [18,19,20,21] };
+  let inSlot = false;
+  for (const slot of prefs.slots) {
+    if (slotMap[slot] && slotMap[slot].includes(hourSlot)) { inSlot = true; break; }
+  }
+  if (inSlot) { score += 5; reasons.push('Créneau préféré ✓'); }
+
+  return { score: Math.max(0, Math.min(100, Math.round(score))), reasons };
+}
+
+function scoreLabel(score) {
+  if (score >= 80) return { text: 'Excellentes conditions', color: '#00d4aa', type: 'good' };
+  if (score >= 65) return { text: 'Bonnes conditions', color: '#7ecf9f', type: 'good' };
+  if (score >= 50) return { text: 'Conditions passables', color: '#f5a623', type: 'warn' };
+  if (score >= 30) return { text: 'Conditions difficiles', color: '#ff7a5c', type: 'warn' };
+  return { text: 'Déconseillé', color: '#ff4757', type: 'bad' };
+}
+
+// ══════════════════════════════════════════════
+// RENDER DASHBOARD
+// ══════════════════════════════════════════════
+function renderDashboard() {
+  if (!weatherData || !tideData) { renderWithFallback(); return; }
+
+  const now = new Date();
+  const nowH = now.getHours();
+  const hourlyTimes = weatherData.atmo.hourly?.time || [];
+
+  // Find current hour index
+  const todayStr = now.toISOString().slice(0, 10);
+  const curIdx = hourlyTimes.findIndex(t => t.startsWith(todayStr) && parseInt(t.slice(11,13)) === nowH);
+  const safeIdx = curIdx >= 0 ? curIdx : Math.max(0, hourlyTimes.length - 24);
+
+  const wind = Math.round((weatherData.atmo.hourly?.wind_speed_10m?.[safeIdx] || 8));
+  const waveH = parseFloat((weatherData.marine.hourly?.wave_height?.[safeIdx] || 0.4).toFixed(1));
+
+  // Recent precipitation sum (last 24h)
+  const recentPrecip = (weatherData.atmo.hourly?.precipitation || [])
+    .slice(Math.max(0, safeIdx - 24), safeIdx)
+    .reduce((a, b) => a + (b || 0), 0);
+
+  const sst = estimateSST(prefs.lat, prefs.lon);
+  const vis = estimateVisibility(waveH, recentPrecip);
+
+  const { score, reasons } = computeScore(wind, waveH, tideData.coef, tideData.isDescending,
+    tideData.currentHeight, recentPrecip, nowH);
+
+  const sl = scoreLabel(score);
+
+  // Animate score ring
+  const circumference = 414.69;
+  const offset = circumference * (1 - score / 100);
+  const arc = document.getElementById('score-arc');
+  arc.style.transition = 'stroke-dashoffset 1.2s ease';
+  setTimeout(() => arc.style.strokeDashoffset = offset, 100);
+
+  document.getElementById('score-num').textContent = score;
+  document.getElementById('score-num').style.color = sl.color;
+  arc.style.stroke = sl.color;
+  document.getElementById('score-label').textContent = sl.text;
+  document.getElementById('score-detail').textContent = reasons.slice(0, 2).join(' · ');
+
+  // Alert banner
+  const alertEl = document.getElementById('main-alert');
+  const bestWindow = findBestWindowToday();
+  if (bestWindow && bestWindow.score >= 70) {
+    alertEl.innerHTML = `
+      <div class="alert-banner good">
+        <div class="alert-icon">🎯</div>
+        <div>
+          <div class="alert-title">Meilleure fenêtre : ${bestWindow.label}</div>
+          <div class="alert-sub">Score ${bestWindow.score}/100 · ${bestWindow.detail}</div>
+        </div>
+      </div>`;
+  } else if (score < 40) {
+    alertEl.innerHTML = `
+      <div class="alert-banner bad">
+        <div class="alert-icon">⚠️</div>
+        <div>
+          <div class="alert-title">Conditions défavorables aujourd'hui</div>
+          <div class="alert-sub">${reasons[0] || 'Mer agitée'}</div>
+        </div>
+      </div>`;
+  } else {
+    alertEl.innerHTML = '';
+  }
+
+  // Metrics
+  const setMetric = (id, val, statusId, statusClass, statusText) => {
+    document.getElementById(id).textContent = val;
+    const el = document.getElementById(statusId);
+    el.textContent = statusText;
+    el.className = 'metric-status ' + statusClass;
+  };
+
+  const windOk = wind <= 8 ? 'ok' : wind <= prefs.windMax ? 'ok' : wind <= 25 ? 'warn' : 'bad';
+  const waveOk = waveH <= 0.4 ? 'ok' : waveH <= prefs.waveMax ? 'ok' : waveH <= 1.2 ? 'warn' : 'bad';
+  const visOk = vis >= 7 ? 'ok' : vis >= 4 ? 'warn' : 'bad';
+  const tempOk = sst >= 18 ? 'ok' : sst >= 14 ? 'warn' : 'bad';
+
+  setMetric('wind-val', wind, 'wind-status', windOk,
+    wind <= 8 ? 'Idéal' : wind <= prefs.windMax ? 'Acceptable' : wind <= 25 ? 'Modéré' : 'Fort');
+  setMetric('wave-val', waveH.toFixed(1), 'wave-status', waveOk,
+    waveH <= 0.3 ? 'Plate' : waveH <= 0.6 ? 'Légère' : waveH <= 1.2 ? 'Modérée' : 'Forte');
+  setMetric('vis-val', vis, 'vis-status', visOk,
+    vis >= 8 ? 'Excellente' : vis >= 5 ? 'Bonne' : vis >= 3 ? 'Réduite' : 'Mauvaise');
+  setMetric('temp-val', sst.toFixed(1), 'temp-status', tempOk,
+    sst >= 22 ? 'Très chaude' : sst >= 18 ? 'Agréable' : sst >= 14 ? 'Fraîche' : 'Froide');
+
+  // Color metric card borders
+  ['wind', 'wave', 'vis', 'temp'].forEach((id, i) => {
+    const cards = document.querySelectorAll('.metric-card');
+    if (cards[i]) {
+      cards[i].className = 'metric-card ' + [windOk, waveOk, visOk, tempOk][i];
+    }
+  });
+
+  // Tide chart
+  renderTideChart();
+
+  // Turbidity history
+  renderTurbidity(weatherData);
+
+  // Update time
+  document.getElementById('update-time').textContent =
+    now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderTideChart() {
+  const chart = document.getElementById('tide-chart');
+  const timesEl = document.getElementById('tide-times');
+  const nowH = new Date().getHours();
+
+  // Show every 3 hours
+  const COLS = 8;
+  let html = '';
+  const heights = tideData.hours;
+  const maxH = Math.max(...heights.map(h => h.height));
+  const minH = Math.min(...heights.map(h => h.height));
+  const range = maxH - minH || 1;
+
+  for (let i = 0; i < 24; i += 3) {
+    const h = heights[i];
+    const pct = Math.round(((h.height - minH) / range) * 90 + 5);
+    const isNow = (i <= nowH && nowH < i + 3);
+    const isFuture = i > nowH;
+    const isGoodWindow = isFuture && tideData.isDescending && pct < 50;
+    let cls = isNow ? 'current' : isFuture ? (isGoodWindow ? 'good-window' : 'future') : 'past';
+    html += `<div class="tide-col">
+      <div class="tide-bar ${cls}" style="height:${pct}%"></div>
+    </div>`;
+  }
+  chart.innerHTML = html;
+
+  let timesHtml = '';
+  for (let i = 0; i < 24; i += 3) {
+    timesHtml += `<span>${i}h</span>`;
+  }
+  timesEl.innerHTML = timesHtml;
+
+  document.getElementById('tide-coef').textContent = tideData.coef;
+  document.getElementById('tide-state').textContent = tideData.isDescending ? '↓ Desc.' : '↑ Mont.';
+  document.getElementById('tide-next').textContent =
+    tideData.nextLow !== undefined ? tideData.nextLow + 'h' : '--';
+  document.getElementById('tide-height').textContent =
+    tideData.currentHeight.toFixed(1) + 'm';
+}
+
+function renderTurbidity(data) {
+  const rows = document.getElementById('turbidity-rows');
+  const trend = document.getElementById('turb-trend');
+  const precip = data.atmo.daily?.precipitation_sum || [];
+  const days = data.atmo.daily?.time || [];
+
+  // Last 7 days only
+  const last7 = precip.slice(0, 7).reverse();
+  const dayLabels = days.slice(0, 7).reverse();
+
+  const dayNames = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+  let html = '';
+  let improving = true;
+  let prevClarity = null;
+
+  last7.forEach((rain, i) => {
+    const clarity = Math.max(0, Math.min(100, 100 - rain * 8 - (i === 0 ? 5 : 0)));
+    if (prevClarity !== null && clarity < prevClarity) improving = false;
+    prevClarity = clarity;
+
+    const d = dayLabels[i] ? new Date(dayLabels[i]) : new Date(Date.now() - (6-i)*86400000);
+    const label = dayNames[d.getDay()];
+    const color = clarity > 70 ? '#1D9E75' : clarity > 40 ? '#f5a623' : '#ff4757';
+    const visEst = Math.round(clarity / 10);
+
+    html += `
+      <div class="turbidity-row">
+        <div class="turb-day">${label}</div>
+        <div class="turb-bar-wrap">
+          <div class="turb-bar-fill" style="width:${clarity}%;background:${color}"></div>
+        </div>
+        <div class="turb-val" style="color:${color}">~${visEst}m</div>
+      </div>`;
+  });
+
+  rows.innerHTML = html;
+  trend.textContent = improving ? '📈 Visibilité en amélioration — favorable' : '📊 Visibilité stable ces derniers jours';
+}
+
+function findBestWindowToday() {
+  if (!weatherData || !tideData) return null;
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const times = weatherData.atmo.hourly?.time || [];
+  const winds = weatherData.atmo.hourly?.wind_speed_10m || [];
+  const waves = weatherData.marine.hourly?.wave_height || [];
+  const precips = weatherData.atmo.hourly?.precipitation || [];
+
+  let best = null;
+  times.forEach((t, i) => {
+    if (!t.startsWith(todayStr)) return;
+    const h = parseInt(t.slice(11, 13));
+    if (h <= now.getHours()) return;
+    const { score } = computeScore(
+      Math.round(winds[i] || 10),
+      parseFloat((waves[i] || 0.5).toFixed(1)),
+      tideData.coef, tideData.isDescending, tideData.currentHeight,
+      precips.slice(Math.max(0,i-24),i).reduce((a,b)=>a+(b||0),0),
+      h
+    );
+    if (!best || score > best.score) {
+      best = {
+        score, hour: h,
+        label: `${h}h–${h+2}h`,
+        detail: `Vent ${Math.round(winds[i]||10)} km/h · Houle ${(waves[i]||0.5).toFixed(1)} m`
+      };
+    }
+  });
+  return best;
+}
+
+// ══════════════════════════════════════════════
+// RENDER FORECAST
+// ══════════════════════════════════════════════
+function renderForecast() {
+  if (!weatherData) return;
+  const container = document.getElementById('forecast-list');
+  const days = weatherData.atmo.daily?.time || [];
+  const windMaxArr = weatherData.atmo.daily?.wind_speed_10m_max || [];
+  const precipArr = weatherData.atmo.daily?.precipitation_sum || [];
+  const waveMaxArr = weatherData.marine.daily?.wave_height_max || [];
+
+  const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const slotDef = {
+    '6h': { hours: [6,7], label: '6h' },
+    'midi': { hours: [11,12,13], label: '12h' },
+    'aprem': { hours: [15,16], label: '15h' },
+    'soir': { hours: [18,19,20], label: '18h' }
+  };
+
+  // Skip past days
+  const today = new Date().toISOString().slice(0, 10);
+  const futureDays = days.filter((d, i) => d >= today);
+
+  let html = '';
+  futureDays.slice(0, 7).forEach((dayStr, di) => {
+    const origIdx = days.indexOf(dayStr);
+    const d = new Date(dayStr);
+    const dayName = di === 0 ? 'Aujourd\'hui' : di === 1 ? 'Demain' : dayNames[d.getDay()];
+    const dateStr = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const wind = Math.round(windMaxArr[origIdx] || 10);
+    const wave = parseFloat((waveMaxArr[origIdx] || 0.5).toFixed(1));
+    const precip = precipArr[origIdx] || 0;
+
+    let slots = '';
+    let dayBestScore = 0;
+
+    Object.entries(slotDef).forEach(([key, def]) => {
+      const { score } = computeScore(wind * 0.7, wave * 0.8, tideData.coef,
+        key === 'soir' ? true : !tideData.isDescending,
+        tideData.currentHeight, precip, def.hours[0]);
+      dayBestScore = Math.max(dayBestScore, score);
+      const q = score >= 78 ? 'best' : score >= 62 ? 'good' : score >= 45 ? 'ok' : 'bad';
+      const icon = q === 'best' ? '★' : q === 'good' ? '✓' : q === 'ok' ? '~' : '✕';
+      const isPref = prefs.slots.includes(key);
+      slots += `<span class="slot-pill ${q}" style="${isPref ? 'font-weight:700' : ''}">
+        ${icon} ${def.label}
+      </span>`;
+    });
+
+    const sl = scoreLabel(dayBestScore);
+    html += `
+      <div class="forecast-day-card">
+        <div class="forecast-day-header">
+          <div>
+            <div class="forecast-day-name">${dayName}</div>
+            <div class="forecast-day-date">${dateStr}</div>
+          </div>
+          <div class="forecast-day-score" style="color:${sl.color}">${dayBestScore}/100</div>
+        </div>
+        <div class="slots-row">${slots}</div>
+        <div class="forecast-details">
+          <div class="fc-detail">🌬️ ${wind} km/h</div>
+          <div class="fc-detail">🌊 ${wave} m</div>
+          <div class="fc-detail">🌧️ ${precip.toFixed(1)} mm</div>
+          <div class="fc-detail">📊 Coeff. ${tideData.coef}</div>
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════
+// RENDER UPCOMING ALERTS
+// ══════════════════════════════════════════════
+function renderUpcomingAlerts() {
+  if (!weatherData || !tideData) return;
+  const container = document.getElementById('upcoming-alerts');
+  const now = new Date();
+  const times = weatherData.atmo.hourly?.time || [];
+  const winds = weatherData.atmo.hourly?.wind_speed_10m || [];
+  const waves = weatherData.marine.hourly?.wave_height || [];
+  const precips = weatherData.atmo.hourly?.precipitation || [];
+  const dayNames = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+
+  const alerts = [];
+
+  times.forEach((t, i) => {
+    const dt = new Date(t);
+    if (dt <= now) return;
+    const h = dt.getHours();
+    const { score } = computeScore(
+      Math.round(winds[i] || 10),
+      parseFloat((waves[i] || 0.5).toFixed(1)),
+      tideData.coef, tideData.isDescending, tideData.currentHeight,
+      precips.slice(Math.max(0,i-24),i).reduce((a,b)=>a+(b||0),0), h
+    );
+
+    if (score >= 70 && prefs.slots.some(s => {
+      const sm = { '6h': [6,7,8], 'midi': [11,12,13,14], 'aprem': [15,16,17], 'soir': [18,19,20,21] };
+      return sm[s]?.includes(h);
+    })) {
+      alerts.push({ dt, score, wind: Math.round(winds[i]||10), wave: (waves[i]||0.5).toFixed(1) });
+    }
+  });
+
+  if (alerts.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:12px">Aucun créneau optimal dans les 7 prochains jours selon vos préférences.</div>';
+    return;
+  }
+
+  let html = '';
+  alerts.slice(0, 5).forEach(a => {
+    const day = a.dt.getDate() === now.getDate() ? "auj." : dayNames[a.dt.getDay()];
+    const hour = a.dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const sl = scoreLabel(a.score);
+    html += `
+      <div class="upcoming-alert">
+        <div class="alert-time-badge">
+          <div class="alert-time-day">${day}</div>
+          <div class="alert-time-hour">${hour}</div>
+        </div>
+        <div>
+          <div class="upcoming-title" style="color:${sl.color}">Score ${a.score}/100 — ${sl.text}</div>
+          <div class="upcoming-sub">Vent ${a.wind} km/h · Houle ${a.wave} m</div>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+
+  // Schedule actual notifications
+  scheduleNotifications(alerts);
+}
+
+// ══════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    alert('Votre navigateur ne supporte pas les notifications. Installez l\'app sur l\'écran d\'accueil pour activer cette fonctionnalité.');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  const btn = document.getElementById('notif-btn');
+  if (perm === 'granted') {
+    btn.textContent = '✅ Notifications activées';
+    btn.style.borderColor = 'rgba(0,212,170,0.6)';
+    scheduleNotifications(null);
+    // Test notification
+    setTimeout(() => {
+      new Notification('Sandow — Test', {
+        body: 'Notifications activées ! Vous serez alerté avant chaque bonne fenêtre.',
+        icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#050e1a" rx="12"/><text y="46" x="10" font-size="40">🐟</text></svg>')
+      });
+    }, 500);
+  } else {
+    btn.textContent = '❌ Permission refusée';
+    btn.style.borderColor = 'rgba(255,71,87,0.4)';
+    btn.style.color = '#ff4757';
+  }
+}
+
+let notifTimers = [];
+
+function scheduleNotifications(alerts) {
+  if (Notification.permission !== 'granted') return;
+  // Clear previous timers
+  notifTimers.forEach(t => clearTimeout(t));
+  notifTimers = [];
+
+  if (!alerts) return;
+  const now = Date.now();
+
+  alerts.slice(0, 3).forEach(a => {
+    const alertTime = a.dt.getTime() - 2 * 3600000; // 2h before
+    const delay = alertTime - now;
+    if (delay > 0 && delay < 7 * 24 * 3600000) {
+      const t = setTimeout(() => {
+        const sl = scoreLabel(a.score);
+        new Notification(`Sandow — ${sl.text} dans 2h !`, {
+          body: `Score ${a.score}/100 · Vent ${a.wind} km/h · Houle ${a.wave} m\nC'est le moment de préparer le matériel !`,
+          icon: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#050e1a" rx="12"/><text y="46" x="10" font-size="40">🐟</text></svg>')
+        });
+      }, delay);
+      notifTimers.push(t);
+    }
+  });
+
+  // Morning summary at 7h tomorrow
+  const tomorrow7 = new Date();
+  tomorrow7.setDate(tomorrow7.getDate() + 1);
+  tomorrow7.setHours(7, 0, 0, 0);
+  const morningDelay = tomorrow7.getTime() - now;
+  if (morningDelay > 0 && document.getElementById('alert-morning')?.checked !== false) {
+    const t = setTimeout(() => {
+      const best = findBestWindowToday();
+      new Notification('Sandow — Résumé du jour', {
+        body: best ? `Meilleur créneau aujourd'hui : ${best.label} (score ${best.score}/100)` : 'Conditions difficiles aujourd\'hui.',
+      });
+    }, morningDelay);
+    notifTimers.push(t);
+  }
+}
+
+// ══════════════════════════════════════════════
+// FALLBACK (when API fails / offline)
+// ══════════════════════════════════════════════
+function renderWithFallback() {
+  tideData = computeTideModel(prefs.lat, prefs.lon);
+  const sst = estimateSST(prefs.lat, prefs.lon);
+  const now = new Date().getHours();
+
+  // Use simulated data
+  const wind = 8 + Math.random() * 6;
+  const wave = 0.3 + Math.random() * 0.4;
+
+  const { score, reasons } = computeScore(Math.round(wind), parseFloat(wave.toFixed(1)),
+    tideData.coef, tideData.isDescending, tideData.currentHeight, 0, now);
+
+  const sl = scoreLabel(score);
+  const arc = document.getElementById('score-arc');
+  const circumference = 414.69;
+  setTimeout(() => {
+    arc.style.transition = 'stroke-dashoffset 1.2s ease';
+    arc.style.strokeDashoffset = circumference * (1 - score / 100);
+    arc.style.stroke = sl.color;
+  }, 100);
+
+  document.getElementById('score-num').textContent = score;
+  document.getElementById('score-num').style.color = sl.color;
+  document.getElementById('score-label').textContent = sl.text;
+  document.getElementById('score-detail').textContent = '(données simulées — vérifiez votre connexion)';
+
+  document.getElementById('wind-val').textContent = Math.round(wind);
+  document.getElementById('wave-val').textContent = wave.toFixed(1);
+  document.getElementById('vis-val').textContent = Math.round(estimateVisibility(wave, 0));
+  document.getElementById('temp-val').textContent = sst.toFixed(1);
+
+  ['wind-status','wave-status','vis-status','temp-status'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = 'Estimé'; el.className = 'metric-status warn';
+  });
+
+  renderTideChart();
+
+  document.getElementById('turbidity-rows').innerHTML =
+    '<div style="font-size:11px;color:var(--text-secondary);text-align:center;padding:8px">Données météo non disponibles. Connectez-vous pour voir l\'historique.</div>';
+
+  document.getElementById('update-time').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ' *';
+}
+
+// ══════════════════════════════════════════════
+// SERVICE WORKER REGISTRATION
+// ══════════════════════════════════════════════
+function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  const swCode = `
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => clients.claim());
+self.addEventListener('fetch', e => {
+  if (e.request.url.includes('open-meteo') || e.request.url.includes('marine-api')) {
+    e.respondWith(
+      caches.open('sandow-data-v1').then(cache =>
+        fetch(e.request).then(res => {
+          cache.put(e.request, res.clone()); return res;
+        }).catch(() => caches.match(e.request))
+      )
+    );
+  } else {
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    );
+  }
+});
+  `;
+  const blob = new Blob([swCode], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url).catch(() => {});
+}
+
+// ══════════════════════════════════════════════
+// SPOTS
+// ══════════════════════════════════════════════
+let spots = [];
+let spotsWeatherCache = {};
+let editingSpotId = null;
+
+function loadSpots() {
+  try {
+    const saved = localStorage.getItem('sandow-spots');
+    if (saved) spots = JSON.parse(saved);
+  } catch(e) { spots = []; }
+}
+
+function saveSpots() {
+  try { localStorage.setItem('sandow-spots', JSON.stringify(spots)); } catch(e) {}
+}
+
+function openAddSpotModal(id) {
+  editingSpotId = id || null;
+  const modal = document.getElementById('spot-modal');
+  const title = document.getElementById('spot-modal-title');
+
+  if (id) {
+    const spot = spots.find(s => s.id === id);
+    if (!spot) return;
+    title.textContent = 'Modifier le spot';
+    document.getElementById('spot-name-input').value = spot.name;
+    document.getElementById('spot-lat-input').value = spot.lat;
+    document.getElementById('spot-lon-input').value = spot.lon;
+    document.getElementById('spot-notes-input').value = spot.notes || '';
+    document.getElementById('spot-city-input').value = spot.city || '';
+  } else {
+    title.textContent = 'Nouveau spot';
+    document.getElementById('spot-name-input').value = '';
+    document.getElementById('spot-lat-input').value = '';
+    document.getElementById('spot-lon-input').value = '';
+    document.getElementById('spot-notes-input').value = '';
+    document.getElementById('spot-city-input').value = '';
+  }
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('spot-name-input').focus(), 150);
+}
+
+function closeSpotModal() {
+  document.getElementById('spot-modal').classList.remove('open');
+  editingSpotId = null;
+}
+
+function useGPSForSpot() {
+  if (!navigator.geolocation) { alert('GPS non disponible.'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById('spot-lat-input').value = pos.coords.latitude.toFixed(4);
+    document.getElementById('spot-lon-input').value = pos.coords.longitude.toFixed(4);
+  }, () => alert('Accès GPS refusé.'));
+}
+
+async function saveSpot() {
+  const name = document.getElementById('spot-name-input').value.trim();
+  const lat = parseFloat(document.getElementById('spot-lat-input').value);
+  const lon = parseFloat(document.getElementById('spot-lon-input').value);
+  const notes = document.getElementById('spot-notes-input').value.trim();
+  const city = document.getElementById('spot-city-input').value.trim();
+
+  if (!name) { alert('Donnez un nom à votre spot.'); return; }
+  if (isNaN(lat) || isNaN(lon)) { alert('Coordonnées GPS requises.'); return; }
+
+  if (editingSpotId) {
+    const idx = spots.findIndex(s => s.id === editingSpotId);
+    if (idx >= 0) spots[idx] = { ...spots[idx], name, lat, lon, notes, city };
+  } else {
+    spots.push({ id: Date.now().toString(), name, lat, lon, notes, city, addedAt: Date.now() });
+  }
+
+  saveSpots();
+  closeSpotModal();
+  renderSpots();
+  // Fetch weather for new spot in background
+  setTimeout(() => fetchSpotWeather(spots[spots.length - 1]), 100);
+}
+
+function deleteSpot(id) {
+  spots = spots.filter(s => s.id !== id);
+  delete spotsWeatherCache[id];
+  saveSpots();
+  renderSpots();
+}
+
+async function fetchSpotWeather(spot) {
+  try {
+    const [marineRes, atmoRes] = await Promise.all([
+      fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${spot.lat}&longitude=${spot.lon}&hourly=wave_height&daily=wave_height_max&timezone=Europe%2FParis&forecast_days=7`).then(r => r.json()),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}&hourly=wind_speed_10m,precipitation&daily=wind_speed_10m_max,precipitation_sum&timezone=Europe%2FParis&forecast_days=7`).then(r => r.json())
+    ]);
+    spotsWeatherCache[spot.id] = { marine: marineRes, atmo: atmoRes, fetchedAt: Date.now() };
+    renderSpots();
+  } catch(e) {}
+}
+
+function getSpotCurrentScore(spot) {
+  const cache = spotsWeatherCache[spot.id];
+  const spotTide = computeTideModel(spot.lat, spot.lon);
+  if (!cache) return { score: null, reasons: [], wind: null, wave: null };
+
+  const now = new Date();
+  const hourlyTimes = cache.atmo.hourly?.time || [];
+  const curIdx = hourlyTimes.findIndex(t => {
+    const d = new Date(t);
+    return d.getDate() === now.getDate() && d.getHours() === now.getHours();
+  });
+  const idx = curIdx >= 0 ? curIdx : 0;
+  const wind = Math.round(cache.atmo.hourly?.wind_speed_10m?.[idx] || 10);
+  const wave = parseFloat((cache.marine.hourly?.wave_height?.[idx] || 0.5).toFixed(1));
+  const precip = (cache.atmo.hourly?.precipitation || []).slice(Math.max(0,idx-24),idx).reduce((a,b)=>a+(b||0),0);
+
+  const result = computeScore(wind, wave, spotTide.coef, spotTide.isDescending, spotTide.currentHeight, precip, now.getHours());
+  return { ...result, wind, wave };
+}
+
+function getSpotBestWindow(spot) {
+  const cache = spotsWeatherCache[spot.id];
+  if (!cache) return null;
+  const spotTide = computeTideModel(spot.lat, spot.lon);
+  const times = cache.atmo.hourly?.time || [];
+  const winds = cache.atmo.hourly?.wind_speed_10m || [];
+  const waves = cache.marine.hourly?.wave_height || [];
+  const precips = cache.atmo.hourly?.precipitation || [];
+  const schedule = loadSchedule();
+  const slotMap = { matin: [6,7,8,9], midi: [11,12,13,14], aprem: [15,16,17], soir: [18,19,20,21] };
+
+  let best = null;
+  const now = new Date();
+
+  times.forEach((t, i) => {
+    const dt = new Date(t);
+    if (dt <= now) return;
+    const h = dt.getHours();
+    const dow = dt.getDay();
+    const inDay = schedule.days.includes(dow);
+    const inSlot = schedule.slots.some(s => slotMap[s]?.includes(h));
+    if (!inDay || !inSlot) return;
+
+    const { score } = computeScore(
+      Math.round(winds[i] || 10),
+      parseFloat((waves[i] || 0.5).toFixed(1)),
+      spotTide.coef, spotTide.isDescending, spotTide.currentHeight,
+      precips.slice(Math.max(0,i-24),i).reduce((a,b)=>a+(b||0),0), h
+    );
+    if (!best || score > best.score) {
+      best = { dt, score, hour: h, dayStr: dt.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }) };
+    }
+  });
+  return best;
+}
+
+function renderSpots() {
+  const container = document.getElementById('spots-list');
+  if (spots.length === 0) {
+    container.innerHTML = `
+      <div class="empty-spots">
+        <div class="empty-spots-icon">🌊</div>
+        <div class="empty-spots-title">Aucun spot enregistré</div>
+        <div class="empty-spots-sub">Ajoutez vos spots favoris pour voir leurs conditions en un coup d'œil et recevoir des alertes personnalisées.</div>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  spots.forEach(spot => {
+    const { score, wind, wave } = getSpotCurrentScore(spot);
+    const best = getSpotBestWindow(spot);
+    const sl = score !== null ? scoreLabel(score) : { text: 'Chargement…', color: 'var(--text-secondary)' };
+    const scoreClass = score === null ? '' : score >= 80 ? 'score-great' : score >= 65 ? 'score-good' : score >= 50 ? 'score-ok' : 'score-bad';
+    const loading = score === null;
+
+    html += `
+      <div class="spot-card ${scoreClass}" id="spot-card-${spot.id}">
+        <div class="spot-top">
+          <div>
+            <div class="spot-name">${escHtml(spot.name)}</div>
+            <div class="spot-loc">${spot.lat.toFixed(4)}° N · ${spot.lon.toFixed(4)}° ${spot.lon >= 0 ? 'E' : 'W'}</div>
+          </div>
+          <div>
+            <div class="spot-score-badge" style="color:${sl.color}">${loading ? '…' : score}</div>
+            <div class="spot-score-sub">${loading ? 'Calcul…' : '/100'}</div>
+          </div>
+        </div>
+
+        ${wind !== null ? `
+        <div class="spot-conditions">
+          <span class="spot-cond-chip">🌬️ ${wind} km/h</span>
+          <span class="spot-cond-chip">🌊 ${wave} m</span>
+          <span class="spot-cond-chip">${sl.text}</span>
+        </div>` : ''}
+
+        ${best ? `
+        <div class="spot-best-window">
+          🗓️ Meilleur créneau selon votre planning : <strong>${best.dayStr} ${best.hour}h</strong> (score ${best.score}/100)
+        </div>` : ''}
+
+        ${spot.notes ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-style:italic">${escHtml(spot.notes)}</div>` : ''}
+
+        <div class="spot-actions">
+          <button class="spot-action-btn primary" onclick="setSpotAsActive('${spot.id}')">📍 Voir conditions</button>
+          <button class="spot-action-btn" onclick="openAddSpotModal('${spot.id}')">✏️ Modifier</button>
+          <button class="spot-action-btn danger" onclick="confirmDeleteSpot('${spot.id}')">🗑️</button>
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+
+  // Fetch weather for spots that don't have cache yet
+  spots.forEach(spot => {
+    if (!spotsWeatherCache[spot.id]) fetchSpotWeather(spot);
+  });
+}
+
+function setSpotAsActive(id) {
+  const spot = spots.find(s => s.id === id);
+  if (!spot) return;
+  prefs.lat = spot.lat;
+  prefs.lon = spot.lon;
+  prefs.cityName = spot.name;
+  document.getElementById('loc-name').textContent = spot.name;
+  savePrefs();
+  fetchAllData();
+  showPage('dashboard', document.getElementById('nav-dashboard'));
+}
+
+function confirmDeleteSpot(id) {
+  const spot = spots.find(s => s.id === id);
+  if (!spot) return;
+  if (confirm(`Supprimer "${spot.name}" de vos spots ?`)) deleteSpot(id);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════
+// SCHEDULE (créneaux de chasse)
+// ══════════════════════════════════════════════
+const DEFAULT_SCHEDULE = {
+  days: [1, 6, 0],
+  slots: ['midi', 'soir'],
+  notice: ['j1', 'j2'],
+  scoreMin: 65
+};
+
+function loadSchedule() {
+  try {
+    const saved = localStorage.getItem('sandow-schedule');
+    if (saved) return { ...DEFAULT_SCHEDULE, ...JSON.parse(saved) };
+  } catch(e) {}
+  return { ...DEFAULT_SCHEDULE };
+}
+
+function saveSchedule() {
+  const schedule = {
+    days: Array.from(document.querySelectorAll('.day-chip.active')).map(d => parseInt(d.dataset.day)),
+    slots: Array.from(document.querySelectorAll('.schedule-slot.active')).map(s => s.dataset.slot),
+    notice: Array.from(document.querySelectorAll('.notice-chip.active')).map(c => c.dataset.notice),
+    scoreMin: parseInt(document.getElementById('score-min-slider').value)
+  };
+  try { localStorage.setItem('sandow-schedule', JSON.stringify(schedule)); } catch(e) {}
+  updateDaysSummary();
+  updateNoticeSummary();
+  renderScheduleUpcoming();
+  renderSpots(); // re-render best windows
+}
+
+function applyScheduleToUI() {
+  const schedule = loadSchedule();
+  document.querySelectorAll('.day-chip').forEach(d => {
+    d.classList.toggle('active', schedule.days.includes(parseInt(d.dataset.day)));
+  });
+  document.querySelectorAll('.schedule-slot').forEach(s => {
+    const active = schedule.slots.includes(s.dataset.slot);
+    s.classList.toggle('active', active);
+    s.querySelector('.schedule-slot-check').textContent = active ? '✓' : '';
+  });
+  document.querySelectorAll('.notice-chip').forEach(c => {
+    c.classList.toggle('active', schedule.notice.includes(c.dataset.notice));
+  });
+  document.getElementById('score-min-slider').value = schedule.scoreMin;
+  document.getElementById('score-min-val').textContent = schedule.scoreMin;
+  updateDaysSummary();
+  updateNoticeSummary();
+}
+
+function toggleDay(el) {
+  el.classList.toggle('active');
+  saveSchedule();
+}
+
+function toggleScheduleSlot(el) {
+  el.classList.toggle('active');
+  el.querySelector('.schedule-slot-check').textContent = el.classList.contains('active') ? '✓' : '';
+  saveSchedule();
+}
+
+function toggleNotice(el) {
+  el.classList.toggle('active');
+  saveSchedule();
+}
+
+function updateDaysSummary() {
+  const dayNames = { 0:'Dim', 1:'Lun', 2:'Mar', 3:'Mer', 4:'Jeu', 5:'Ven', 6:'Sam' };
+  const active = Array.from(document.querySelectorAll('.day-chip.active')).map(d => dayNames[d.dataset.day]);
+  const el = document.getElementById('days-summary');
+  if (el) el.textContent = active.length ? active.join(' · ') + ' sélectionnés' : 'Aucun jour sélectionné';
+}
+
+function updateNoticeSummary() {
+  const active = Array.from(document.querySelectorAll('.notice-chip.active')).map(c => c.dataset.notice);
+  const el = document.getElementById('notice-summary');
+  if (!el) return;
+  const msgs = [];
+  if (active.includes('j2')) msgs.push('J-2 (le matin à 8h)');
+  if (active.includes('j1')) msgs.push('J-1 (à 18h la veille)');
+  if (active.includes('same')) msgs.push('Jour J (2h avant)');
+  el.textContent = msgs.length ? 'Alertes envoyées : ' + msgs.join(' · ') : 'Aucune notification programmée';
+}
+
+function renderScheduleUpcoming() {
+  const container = document.getElementById('schedule-upcoming');
+  if (!container || !weatherData) {
+    if (container) container.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:10px">Chargement des données météo…</div>';
+    return;
+  }
+
+  const schedule = loadSchedule();
+  const slotMap = { matin: [6,7,8,9], midi: [11,12,13,14], aprem: [15,16,17], soir: [18,19,20,21] };
+  const slotLabels = { matin: 'Matin', midi: 'Midi', aprem: 'Après-midi', soir: 'Soir' };
+  const times = weatherData.atmo.hourly?.time || [];
+  const winds = weatherData.atmo.hourly?.wind_speed_10m || [];
+  const waves = weatherData.marine.hourly?.wave_height || [];
+  const precips = weatherData.atmo.hourly?.precipitation || [];
+  const dayNames = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+  const dayNamesFull = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+
+  const now = new Date();
+  const upcoming = [];
+
+  // Group by day-slot pair, take best hour per slot
+  const seen = new Set();
+  times.forEach((t, i) => {
+    const dt = new Date(t);
+    if (dt <= now) return;
+    const h = dt.getHours();
+    const dow = dt.getDay();
+    if (!schedule.days.includes(dow)) return;
+
+    for (const slot of schedule.slots) {
+      if (!slotMap[slot]?.includes(h)) continue;
+      const daySlotKey = dt.toISOString().slice(0,10) + '-' + slot;
+      if (seen.has(daySlotKey)) continue;
+
+      const { score } = computeScore(
+        Math.round(winds[i] || 10),
+        parseFloat((waves[i] || 0.5).toFixed(1)),
+        tideData.coef, tideData.isDescending, tideData.currentHeight,
+        precips.slice(Math.max(0,i-24),i).reduce((a,b)=>a+(b||0),0), h
+      );
+
+      seen.add(daySlotKey);
+      upcoming.push({ dt, score, slot, wind: Math.round(winds[i]||10), wave: (waves[i]||0.5).toFixed(1) });
+    }
+  });
+
+  if (upcoming.length === 0) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);text-align:center;padding:12px">Aucun créneau correspondant dans les prochains jours.</div>';
+    return;
+  }
+
+  let html = '';
+  upcoming.slice(0, 6).forEach(u => {
+    const sl = scoreLabel(u.score);
+    const isGood = u.score >= schedule.scoreMin;
+    const dayLabel = dayNamesFull[u.dt.getDay()];
+    const dateLabel = u.dt.toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+    const daysUntil = Math.round((u.dt - now) / 86400000);
+    const daysLabel = daysUntil === 0 ? "Aujourd'hui" : daysUntil === 1 ? 'Demain' : `J+${daysUntil}`;
+    const notifBadge = isGood && schedule.notice.length ? `<span style="font-size:9px;background:rgba(0,212,170,0.15);color:var(--teal);border-radius:10px;padding:2px 6px;margin-left:6px">🔔 alerte prévue</span>` : '';
+
+    html += `
+      <div class="upcoming-alert">
+        <div class="alert-time-badge" style="${isGood ? '' : 'opacity:0.5'}">
+          <div class="alert-time-day">${daysLabel}</div>
+          <div class="alert-time-hour" style="font-size:11px">${slotLabels[u.slot]}</div>
+        </div>
+        <div style="flex:1">
+          <div class="upcoming-title" style="color:${sl.color}">${dayLabel} ${dateLabel} ${notifBadge}</div>
+          <div class="upcoming-sub">Score ${u.score}/100 · Vent ${u.wind} km/h · Houle ${u.wave} m</div>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+
+  // Schedule advance notifications
+  scheduleAdvanceNotifications(upcoming, schedule);
+}
+
+function scheduleAdvanceNotifications(upcoming, schedule) {
+  if (Notification.permission !== 'granted') return;
+  notifTimers.forEach(t => clearTimeout(t));
+  notifTimers = [];
+
+  const now = Date.now();
+  const slotLabels = { matin: 'Matin', midi: 'Midi', aprem: 'Après-midi', soir: 'Soir' };
+
+  upcoming.forEach(u => {
+    if (u.score < schedule.scoreMin) return;
+    const sl = scoreLabel(u.score);
+    const icon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#050e1a" rx="12"/><text y="46" x="10" font-size="40">🐟</text></svg>');
+
+    // J-2 at 8h AM
+    if (schedule.notice.includes('j2')) {
+      const j2Date = new Date(u.dt);
+      j2Date.setDate(j2Date.getDate() - 2);
+      j2Date.setHours(8, 0, 0, 0);
+      const delay = j2Date.getTime() - now;
+      if (delay > 0) {
+        notifTimers.push(setTimeout(() => {
+          new Notification(`🐟 Sandow — Bonne sortie dans 2 jours !`, {
+            body: `${slotLabels[u.slot]} ${u.dt.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'short'})} · Score ${u.score}/100\nVent ${u.wind} km/h · Houle ${u.wave} m`,
+            icon
+          });
+        }, delay));
+      }
+    }
+
+    // J-1 at 18h
+    if (schedule.notice.includes('j1')) {
+      const j1Date = new Date(u.dt);
+      j1Date.setDate(j1Date.getDate() - 1);
+      j1Date.setHours(18, 0, 0, 0);
+      const delay = j1Date.getTime() - now;
+      if (delay > 0) {
+        notifTimers.push(setTimeout(() => {
+          new Notification(`🐟 Sandow — Sortie demain ${slotLabels[u.slot].toLowerCase()} !`, {
+            body: `${sl.text} · Score ${u.score}/100\nVent ${u.wind} km/h · Houle ${u.wave} m · Prépare le matos !`,
+            icon
+          });
+        }, delay));
+      }
+    }
+
+    // Same day 2h before
+    if (schedule.notice.includes('same')) {
+      const sameDay = new Date(u.dt.getTime() - 2 * 3600000);
+      const delay = sameDay.getTime() - now;
+      if (delay > 0) {
+        notifTimers.push(setTimeout(() => {
+          new Notification(`🐟 Sandow — C'est l'heure dans 2h !`, {
+            body: `${slotLabels[u.slot]} · Score ${u.score}/100\nVent ${u.wind} km/h · Houle ${u.wave} m`,
+            icon
+          });
+        }, delay));
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+async function init() {
+  loadPrefs();
+  loadSpots();
+  applyScheduleToUI();
+  registerSW();
+
+  const statuses = [
+    'Connexion météo marine…',
+    'Récupération des données de vagues…',
+    'Calcul des marées…',
+    'Analyse des conditions…',
+    'Prêt !'
+  ];
+
+  let i = 0;
+  const statusInterval = setInterval(() => {
+    if (i < statuses.length - 1) {
+      setLoadingStatus(statuses[++i]);
+    } else {
+      clearInterval(statusInterval);
+    }
+  }, 400);
+
+  await fetchAllData();
+
+  // Render spots (will trigger spot weather fetches)
+  renderSpots();
+  renderScheduleUpcoming();
+
+  // Check notif permission
+  if (Notification.permission === 'granted') {
+    const btn = document.getElementById('notif-btn');
+    if (btn) { btn.textContent = '✅ Notifications activées'; btn.style.borderColor = 'rgba(0,212,170,0.6)'; }
+  }
+
+  // Auto-refresh every 30 minutes
+  setInterval(fetchAllData, 30 * 60 * 1000);
+}
+
+// Run
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
