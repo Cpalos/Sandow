@@ -1359,8 +1359,9 @@ input[type=range]::-webkit-slider-thumb {
       <!-- Tide chart -->
       <div class="section-card fade-in">
         <div class="section-label">Marée du jour</div>
-        <div class="tide-chart" id="tide-chart"></div>
-        <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--text-muted);margin-bottom:10px" id="tide-times"></div>
+        <div class="tide-chart" id="tide-chart" style="height:64px;gap:1px"></div>
+        <div style="display:flex;font-size:8px;color:var(--text-muted);margin:3px 0 6px" id="tide-times"></div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;min-height:16px" id="tide-legend"></div>
         <div class="tide-info" id="tide-info">
           <div class="tide-stat">
             <div class="tide-stat-val" id="tide-coef">—</div>
@@ -2268,34 +2269,106 @@ function renderDashboard() {
 function renderTideChart() {
   const chart = document.getElementById('tide-chart');
   const timesEl = document.getElementById('tide-times');
+  const legendEl = document.getElementById('tide-legend');
   const nowH = new Date().getHours();
 
-  // Show every 3 hours
-  const COLS = 8;
-  let html = '';
   const heights = tideData.hours;
   const maxH = Math.max(...heights.map(h => h.height));
   const minH = Math.min(...heights.map(h => h.height));
   const range = maxH - minH || 1;
+  const midH = (maxH + minH) / 2;
 
-  for (let i = 0; i < 24; i += 3) {
+  // Identify descending windows hour-by-hour (true if this hour is lower than previous)
+  // A "hunt window" = descending AND preferably not already near low tide (not last 15% of descent)
+  const isDescendingAt = (i) => {
+    const prev = heights[Math.max(0, i - 1)].height;
+    const cur = heights[i].height;
+    return cur < prev;
+  };
+
+  // Find all high-tide peaks to know descent start per cycle
+  const peaks = [];
+  for (let i = 1; i < 23; i++) {
+    if (heights[i].height > heights[i-1].height && heights[i].height > heights[i+1].height) {
+      peaks.push(i);
+    }
+  }
+
+  // For each hour, determine if it's in the "good hunt zone":
+  // descending + not yet within 1h of the low
+  const isHuntZone = (i) => {
+    if (!isDescendingAt(i)) return false;
+    // Check it's not the last hour before low tide (within ~1h of trough)
+    const cur = heights[i].height;
+    const pctFromLow = (cur - minH) / range;
+    return pctFromLow > 0.12; // at least 12% above low = still worth hunting
+  };
+
+  let html = '';
+  // Render every hour (24 bars) for precision
+  for (let i = 0; i < 24; i++) {
     const h = heights[i];
     const pct = Math.round(((h.height - minH) / range) * 90 + 5);
-    const isNow = (i <= nowH && nowH < i + 3);
-    const isFuture = i > nowH;
-    const isGoodWindow = isFuture && tideData.isDescending && pct < 50;
-    let cls = isNow ? 'current' : isFuture ? (isGoodWindow ? 'good-window' : 'future') : 'past';
-    html += `<div class="tide-col">
-      <div class="tide-bar ${cls}" style="height:${pct}%"></div>
+    const isNow = i === nowH;
+    const isPast = i < nowH;
+    const hunt = isHuntZone(i);
+
+    let barStyle = '';
+    let glowStyle = '';
+
+    if (isNow) {
+      // Current hour: bright teal pulse
+      barStyle = 'background: var(--teal);';
+      glowStyle = 'box-shadow: 0 0 10px rgba(0,212,170,0.7);';
+    } else if (isPast) {
+      barStyle = 'background: var(--text-muted); opacity:0.5;';
+    } else if (hunt) {
+      // Hunt zone: green gradient — brighter when higher above low (peak of descent)
+      const pctFromLow = (h.height - minH) / range;
+      const intensity = Math.round(40 + pctFromLow * 60); // 40–100% opacity
+      barStyle = `background: linear-gradient(to top, #00d4aa, #00ff99); opacity:${(intensity/100).toFixed(2)};`;
+      glowStyle = pctFromLow > 0.5 ? 'box-shadow: 0 0 6px rgba(0,212,170,0.35);' : '';
+    } else {
+      // Ascending or near-low: muted blue
+      barStyle = 'background: rgba(0,212,170,0.18);';
+    }
+
+    const nowDot = isNow ? `<div style="width:5px;height:5px;border-radius:50%;background:var(--teal);margin:0 auto;margin-top:2px;box-shadow:0 0 6px var(--teal)"></div>` : '';
+
+    html += `<div class="tide-col" title="${i}h · ${h.height.toFixed(2)}m${hunt ? ' · 🟢 Chasse' : ''}">
+      <div class="tide-bar" style="height:${pct}%;${barStyle}${glowStyle}"></div>
+      ${nowDot}
     </div>`;
   }
   chart.innerHTML = html;
 
+  // Time labels every 3h
   let timesHtml = '';
-  for (let i = 0; i < 24; i += 3) {
-    timesHtml += `<span>${i}h</span>`;
+  for (let i = 0; i < 24; i++) {
+    timesHtml += `<span style="flex:1;text-align:center;font-size:${i % 3 === 0 ? '8' : '0'}px;color:var(--text-muted)">${i % 3 === 0 ? i + 'h' : ''}</span>`;
   }
   timesEl.innerHTML = timesHtml;
+  timesEl.style.display = 'flex';
+
+  // Legend
+  if (legendEl) {
+    const huntHours = [];
+    for (let i = 0; i < 24; i++) { if (isHuntZone(i)) huntHours.push(i); }
+    if (huntHours.length > 0) {
+      // Group consecutive hours into ranges
+      const ranges = [];
+      let start = huntHours[0], prev = huntHours[0];
+      for (let k = 1; k <= huntHours.length; k++) {
+        if (k === huntHours.length || huntHours[k] !== prev + 1) {
+          ranges.push(start === prev ? `${start}h` : `${start}h–${prev+1}h`);
+          if (k < huntHours.length) { start = huntHours[k]; prev = huntHours[k]; }
+        } else { prev = huntHours[k]; }
+      }
+      legendEl.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--teal);margin-right:5px;vertical-align:middle"></span>Zone de chasse : <strong style="color:var(--teal)">${ranges.join(', ')}</strong>`;
+    } else {
+      legendEl.innerHTML = `<span style="color:var(--text-secondary)">Pas de zone descendante sur cette plage</span>`;
+    }
+  }
 
   document.getElementById('tide-coef').textContent = tideData.coef;
   document.getElementById('tide-state').textContent = tideData.isDescending ? '↓ Desc.' : '↑ Mont.';
