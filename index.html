@@ -2509,44 +2509,83 @@ function renderForecast() {
   if (!weatherData) return;
   const container = document.getElementById('forecast-list');
   const days = weatherData.atmo.daily?.time || [];
-  const windMaxArr = weatherData.atmo.daily?.wind_speed_10m_max || [];
   const precipArr = weatherData.atmo.daily?.precipitation_sum || [];
-  const waveMaxArr = weatherData.marine.daily?.wave_height_max || [];
+
+  // Hourly arrays for precise per-slot data
+  const hourlyTimes = weatherData.atmo.hourly?.time || [];
+  const hourlyWind  = weatherData.atmo.hourly?.wind_speed_10m || [];
+  const hourlyPrecip= weatherData.atmo.hourly?.precipitation || [];
+  const hourlyWave  = weatherData.marine.hourly?.wave_height || [];
 
   const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   const slotDef = {
-    '6h': { hours: [6,7], label: '6h' },
+    '6h':   { hours: [6,7],      label: '6h'  },
     'midi': { hours: [11,12,13], label: '12h' },
-    'aprem': { hours: [15,16], label: '15h' },
+    'aprem':{ hours: [15,16],    label: '15h' },
     'soir': { hours: [18,19,20], label: '18h' }
   };
 
-  // Skip past days
+  // Helper: get hourly index for a given dayStr + hour
+  function getHourlyIdx(dayStr, hour) {
+    const target = `${dayStr}T${String(hour).padStart(2,'0')}:00`;
+    const idx = hourlyTimes.findIndex(t => t.startsWith(target));
+    return idx >= 0 ? idx : null;
+  }
+
+  // Helper: precip accumulated over past 24h from a given hourly index
+  function getPrecip24h(idx) {
+    if (idx === null) return 0;
+    return hourlyPrecip.slice(Math.max(0, idx - 24), idx).reduce((a,b) => a+(b||0), 0);
+  }
+
   const today = new Date().toISOString().slice(0, 10);
-  const futureDays = days.filter((d, i) => d >= today);
+  const futureDays = days.filter(d => d >= today);
 
   let html = '';
   futureDays.slice(0, 7).forEach((dayStr, di) => {
     const origIdx = days.indexOf(dayStr);
     const d = new Date(dayStr);
-    const dayName = di === 0 ? 'Aujourd\'hui' : di === 1 ? 'Demain' : dayNames[d.getDay()];
+    const dayName = di === 0 ? "Aujourd'hui" : di === 1 ? 'Demain' : dayNames[d.getDay()];
     const dateStr = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-    const wind = Math.round(windMaxArr[origIdx] || 10);
-    const wave = parseFloat((waveMaxArr[origIdx] || 0.5).toFixed(1));
-    const precip = precipArr[origIdx] || 0;
+
+    // Daily precip sum for display badge
+    const dailyPrecip = precipArr[origIdx] || 0;
 
     let slots = '';
     let dayBestScore = 0;
+    let dayWindMax = 0, dayWaveMax = 0;
 
     Object.entries(slotDef).forEach(([key, def]) => {
       const slotHour = def.hours[0];
-      // ✅ Compute tide specifically for this day AND this hour
+      const hIdx = getHourlyIdx(dayStr, slotHour);
+
+      // Use hourly value if available, fallback to neighbour hours
+      let wind, wave;
+      if (hIdx !== null) {
+        wind = Math.round(hourlyWind[hIdx] || 10);
+        wave = parseFloat((hourlyWave[hIdx] || 0.5).toFixed(1));
+      } else {
+        // Fallback: try adjacent hours
+        let found = false;
+        for (const h of def.hours) {
+          const idx2 = getHourlyIdx(dayStr, h);
+          if (idx2 !== null) {
+            wind = Math.round(hourlyWind[idx2] || 10);
+            wave = parseFloat((hourlyWave[idx2] || 0.5).toFixed(1));
+            found = true; break;
+          }
+        }
+        if (!found) { wind = 10; wave = 0.5; }
+      }
+
+      const precip24h = getPrecip24h(hIdx);
+      dayWindMax = Math.max(dayWindMax, wind);
+      dayWaveMax = Math.max(dayWaveMax, wave);
+
       const dayTide = computeTideForDay(prefs.lat, prefs.lon, dayStr, slotHour);
-      const { score } = computeScore(
-        wind, wave,
-        dayTide.coef, dayTide.isDescending, dayTide.currentHeight,
-        precip, slotHour
-      );
+      const { score } = computeScore(wind, wave, dayTide.coef, dayTide.isDescending,
+        dayTide.currentHeight, precip24h, slotHour);
+
       dayBestScore = Math.max(dayBestScore, score);
       const q = score >= 78 ? 'best' : score >= 62 ? 'good' : score >= 45 ? 'ok' : 'bad';
       const isPref = prefs.slots.includes(key);
@@ -2556,9 +2595,7 @@ function renderForecast() {
       </span>`;
     });
 
-    // Best coef for display = noon of that day
     const dayTideNoon = computeTideForDay(prefs.lat, prefs.lon, dayStr, 12);
-
     const sl = scoreLabel(dayBestScore);
     html += `
       <div class="forecast-day-card">
@@ -2571,9 +2608,9 @@ function renderForecast() {
         </div>
         <div class="slots-row">${slots}</div>
         <div class="forecast-details">
-          <div class="fc-detail">🌬️ ${wind} km/h</div>
-          <div class="fc-detail">🌊 ${wave} m</div>
-          <div class="fc-detail">🌧️ ${precip.toFixed(1)} mm</div>
+          <div class="fc-detail">🌬️ ${dayWindMax} km/h</div>
+          <div class="fc-detail">🌊 ${dayWaveMax} m</div>
+          <div class="fc-detail">🌧️ ${dailyPrecip.toFixed(1)} mm</div>
           <div class="fc-detail">📊 Coeff. ${dayTideNoon.coef}</div>
         </div>
       </div>`;
