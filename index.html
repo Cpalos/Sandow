@@ -2095,6 +2095,40 @@ function computeTideModel(lat, lon) {
   };
 }
 
+// Compute tide data for any specific day (YYYY-MM-DD) and hour
+function computeTideForDay(lat, lon, dayStr, hour) {
+  const M2 = 44714;
+  const S2 = 43200;
+  const amphM2 = 1.8 + Math.abs(Math.sin(lat * Math.PI / 180)) * 0.8;
+  const amphS2 = amphM2 * 0.35;
+  const phaseOffset = (lon / 360) * M2;
+
+  const getTideHeight = (ts) => {
+    const t = ts / 1000;
+    return amphM2 * Math.cos((2 * Math.PI * t / M2) + phaseOffset) +
+           amphS2 * Math.cos((2 * Math.PI * t / S2) + phaseOffset * 0.9);
+  };
+
+  const base = new Date(dayStr + 'T00:00:00');
+  const ts = base.getTime() + hour * 3600000;
+  const springCycle = 14.7 * 24 * 3600 * 1000;
+
+  // Coefficient at noon that day (representative for the day)
+  const noonTs = base.getTime() + 12 * 3600000;
+  const coef = Math.round(70 + 50 * Math.abs(Math.cos(2 * Math.PI * noonTs / springCycle)));
+
+  const h = getTideHeight(ts);
+  const hPrev = getTideHeight(ts - 3600000);
+  const isDescending = h < hPrev;
+
+  // Generate 24h heights to find min/max for scoring context
+  const heights = Array.from({length: 24}, (_, i) => getTideHeight(base.getTime() + i * 3600000));
+  const maxH = Math.max(...heights);
+  const minH = Math.min(...heights);
+
+  return { coef, isDescending, currentHeight: h, maxH, minH };
+}
+
 // Sea water temperature estimation (SST from latitude/season)
 function estimateSST(lat, lon) {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
@@ -2495,9 +2529,14 @@ function renderForecast() {
     let dayBestScore = 0;
 
     Object.entries(slotDef).forEach(([key, def]) => {
-      const { score } = computeScore(wind * 0.7, wave * 0.8, tideData.coef,
-        key === 'soir' ? true : !tideData.isDescending,
-        tideData.currentHeight, precip, def.hours[0]);
+      const slotHour = def.hours[0];
+      // ✅ Compute tide specifically for this day AND this hour
+      const dayTide = computeTideForDay(prefs.lat, prefs.lon, dayStr, slotHour);
+      const { score } = computeScore(
+        wind * 0.7, wave * 0.8,
+        dayTide.coef, dayTide.isDescending, dayTide.currentHeight,
+        precip, slotHour
+      );
       dayBestScore = Math.max(dayBestScore, score);
       const q = score >= 78 ? 'best' : score >= 62 ? 'good' : score >= 45 ? 'ok' : 'bad';
       const icon = q === 'best' ? '★' : q === 'good' ? '✓' : q === 'ok' ? '~' : '✕';
@@ -2506,6 +2545,9 @@ function renderForecast() {
         ${icon} ${def.label}
       </span>`;
     });
+
+    // Best coef for display = noon of that day
+    const dayTideNoon = computeTideForDay(prefs.lat, prefs.lon, dayStr, 12);
 
     const sl = scoreLabel(dayBestScore);
     html += `
@@ -2522,7 +2564,7 @@ function renderForecast() {
           <div class="fc-detail">🌬️ ${wind} km/h</div>
           <div class="fc-detail">🌊 ${wave} m</div>
           <div class="fc-detail">🌧️ ${precip.toFixed(1)} mm</div>
-          <div class="fc-detail">📊 Coeff. ${tideData.coef}</div>
+          <div class="fc-detail">📊 Coeff. ${dayTideNoon.coef}</div>
         </div>
       </div>`;
   });
@@ -2549,10 +2591,13 @@ function renderUpcomingAlerts() {
     const dt = new Date(t);
     if (dt <= now) return;
     const h = dt.getHours();
+    const dayStr = t.slice(0, 10);
+    // ✅ Tide computed for this specific day + hour
+    const hourTide = computeTideForDay(prefs.lat, prefs.lon, dayStr, h);
     const { score } = computeScore(
       Math.round(winds[i] || 10),
       parseFloat((waves[i] || 0.5).toFixed(1)),
-      tideData.coef, tideData.isDescending, tideData.currentHeight,
+      hourTide.coef, hourTide.isDescending, hourTide.currentHeight,
       precips.slice(Math.max(0,i-24),i).reduce((a,b)=>a+(b||0),0), h
     );
 
@@ -2880,10 +2925,13 @@ function getSpotBestWindow(spot) {
     const inSlot = schedule.slots.some(s => slotMap[s]?.includes(h));
     if (!inDay || !inSlot) return;
 
+    // ✅ Tide computed for this specific day + hour
+    const dayStr = t.slice(0, 10);
+    const hourTide = computeTideForDay(spot.lat, spot.lon, dayStr, h);
     const { score } = computeScore(
       Math.round(winds[i] || 10),
       parseFloat((waves[i] || 0.5).toFixed(1)),
-      spotTide.coef, spotTide.isDescending, spotTide.currentHeight,
+      hourTide.coef, hourTide.isDescending, hourTide.currentHeight,
       precips.slice(Math.max(0,i-24),i).reduce((a,b)=>a+(b||0),0), h
     );
     if (!best || score > best.score) {
@@ -3097,10 +3145,13 @@ function renderScheduleUpcoming() {
       const daySlotKey = dt.toISOString().slice(0,10) + '-' + slot;
       if (seen.has(daySlotKey)) continue;
 
+      // ✅ Tide computed for this specific day + hour
+      const dayStr = t.slice(0, 10);
+      const hourTide = computeTideForDay(prefs.lat, prefs.lon, dayStr, h);
       const { score } = computeScore(
         Math.round(winds[i] || 10),
         parseFloat((waves[i] || 0.5).toFixed(1)),
-        tideData.coef, tideData.isDescending, tideData.currentHeight,
+        hourTide.coef, hourTide.isDescending, hourTide.currentHeight,
         precips.slice(Math.max(0,i-24),i).reduce((a,b)=>a+(b||0),0), h
       );
 
