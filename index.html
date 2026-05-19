@@ -2555,20 +2555,19 @@ function renderForecast() {
     const turbidityPrecip = dailyPrecip + prevDayPrecip1 * 0.5 + prevDayPrecip2 * 0.25;
 
     let slots = '';
-    let dayBestScore = 0;
+    let dayBestScore = 0;      // meilleur score PARMI les créneaux préférés uniquement
+    let dayBestScoreAll = 0;   // meilleur score toutes heures (pour info)
     let dayWindMax = 0, dayWaveMax = 0;
 
     Object.entries(slotDef).forEach(([key, def]) => {
       const slotHour = def.hours[0];
       const hIdx = getHourlyIdx(dayStr, slotHour);
 
-      // Use hourly value if available, fallback to neighbour hours
       let wind, wave;
       if (hIdx !== null) {
         wind = Math.round(hourlyWind[hIdx] || 10);
         wave = parseFloat((hourlyWave[hIdx] || 0.5).toFixed(1));
       } else {
-        // Fallback: try adjacent hours
         let found = false;
         for (const h of def.hours) {
           const idx2 = getHourlyIdx(dayStr, h);
@@ -2589,14 +2588,27 @@ function renderForecast() {
       const { score } = computeScore(wind, wave, dayTide.coef, dayTide.isDescending,
         dayTide.currentHeight, precip24h, slotHour);
 
-      dayBestScore = Math.max(dayBestScore, score);
-      const q = score >= 78 ? 'best' : score >= 62 ? 'good' : score >= 45 ? 'ok' : 'bad';
       const isPref = prefs.slots.includes(key);
+      dayBestScoreAll = Math.max(dayBestScoreAll, score);
+
+      // Le score global de la journée = meilleur score sur les créneaux PRÉFÉRÉS seulement
+      if (isPref) dayBestScore = Math.max(dayBestScore, score);
+
+      const q = score >= 78 ? 'best' : score >= 62 ? 'good' : score >= 45 ? 'ok' : 'bad';
       const tideArrow = dayTide.isDescending ? '↓' : '↑';
-      slots += `<span class="slot-pill ${q}" style="${isPref ? 'font-weight:700' : ''}">
-        ${def.label} <span style="opacity:0.7;font-size:10px">${tideArrow}</span> <span style="font-size:11px">${score}</span>
+
+      // Créneaux non préférés : affichés en retrait, style atténué
+      const pillStyle = isPref
+        ? `font-weight:700`
+        : `opacity:0.45;font-size:10px`;
+
+      slots += `<span class="slot-pill ${isPref ? q : 'ok'}" style="${pillStyle}">
+        ${def.label} <span style="opacity:0.7;font-size:9px">${tideArrow}</span> <span style="font-size:10px">${score}</span>
       </span>`;
     });
+
+    // Si aucun créneau préféré n'a de score (pas de préférence définie), fallback sur tous
+    if (dayBestScore === 0) dayBestScore = dayBestScoreAll;
 
     const dayTideNoon = computeTideForDay(prefs.lat, prefs.lon, dayStr, 12);
     const sl = scoreLabel(dayBestScore);
