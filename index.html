@@ -1535,14 +1535,9 @@ input[type=range]::-webkit-slider-thumb {
       </div>
 
       <div class="pref-section-title">Créneaux préférés</div>
-      <div class="pref-card">
-        <div style="padding:10px 16px 4px;font-size:12px;color:var(--text-secondary)">Sélectionner vos créneaux favoris :</div>
-        <div class="time-chips" id="time-chips">
-          <div class="time-chip" data-slot="6h" onclick="toggleSlot(this)">6h–8h</div>
-          <div class="time-chip active" data-slot="midi" onclick="toggleSlot(this)">11h–14h</div>
-          <div class="time-chip" data-slot="aprem" onclick="toggleSlot(this)">15h–17h</div>
-          <div class="time-chip active" data-slot="soir" onclick="toggleSlot(this)">18h–21h</div>
-        </div>
+      <div class="pref-card" style="padding:14px 16px">
+        <div style="font-size:13px;color:var(--text-secondary)">Configurez vos jours et créneaux dans l'onglet <strong style="color:var(--teal)">🗓️ Créneaux</strong>.</div>
+        <div id="prefs-slots-summary" style="font-size:12px;color:var(--text-secondary);margin-top:8px"></div>
       </div>
 
       <div class="pref-section-title">Seuils acceptables</div>
@@ -1861,7 +1856,10 @@ function savePrefs() {
   prefs.prefTideDesc = document.getElementById('pref-tide-desc').checked;
   prefs.prefHighTide = document.getElementById('pref-high-tide').checked;
   prefs.noRain = document.getElementById('pref-no-rain').checked;
-  prefs.slots = Array.from(document.querySelectorAll('.time-chip.active')).map(c => c.dataset.slot);
+  // Slots viennent uniquement de la page Créneaux (source unique)
+  const schedule = loadSchedule();
+  prefs.slots = schedule.slots;
+  updatePrefSlotsSummary();
   try { localStorage.setItem('sandow-prefs', JSON.stringify(prefs)); } catch(e) {}
 }
 
@@ -1877,10 +1875,21 @@ function applyPrefsToUI() {
   document.getElementById('pref-no-rain').checked = prefs.noRain;
   document.getElementById('city-input').value = prefs.cityName;
   document.getElementById('loc-name').textContent = prefs.cityName;
+  // Sync slots depuis schedule (source unique)
+  const schedule = loadSchedule();
+  prefs.slots = schedule.slots;
+  updatePrefSlotsSummary();
+}
 
-  document.querySelectorAll('.time-chip').forEach(c => {
-    c.classList.toggle('active', prefs.slots.includes(c.dataset.slot));
-  });
+function updatePrefSlotsSummary() {
+  const el = document.getElementById('prefs-slots-summary');
+  if (!el) return;
+  const schedule = loadSchedule();
+  const slotLabels = { matin:'Matin 6h–10h', midi:'Midi 11h–14h', aprem:'Après-midi 15h–17h', soir:'Soir 18h–21h' };
+  const dayNames = { 0:'Dim', 1:'Lun', 2:'Mar', 3:'Mer', 4:'Jeu', 5:'Ven', 6:'Sam' };
+  const slots = schedule.slots.map(s => slotLabels[s] || s).join(', ');
+  const days = schedule.days.map(d => dayNames[d]).join(', ');
+  el.innerHTML = `Jours : <strong style="color:var(--text-primary)">${days || '—'}</strong><br>Créneaux : <strong style="color:var(--text-primary)">${slots || '—'}</strong>`;
 }
 
 // ══════════════════════════════════════════════
@@ -3114,10 +3123,13 @@ function saveSchedule() {
     scoreMin: parseInt(document.getElementById('score-min-slider').value)
   };
   try { localStorage.setItem('sandow-schedule', JSON.stringify(schedule)); } catch(e) {}
+  // Sync immédiat avec prefs.slots — source unique de vérité
+  prefs.slots = schedule.slots;
   updateDaysSummary();
   updateNoticeSummary();
+  updatePrefSlotsSummary();
   renderScheduleUpcoming();
-  renderSpots(); // re-render best windows
+  renderSpots();
 }
 
 function applyScheduleToUI() {
@@ -3323,6 +3335,10 @@ async function init() {
   loadPrefs();
   loadSpots();
   applyScheduleToUI();
+  // Source unique : slots viennent toujours de schedule
+  const schedule = loadSchedule();
+  prefs.slots = schedule.slots;
+  updatePrefSlotsSummary();
   registerSW();
 
   const statuses = [
