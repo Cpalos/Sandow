@@ -2152,53 +2152,51 @@ function estimateVisibility(waveH, recentPrecip) {
 // SCORING ALGORITHM
 // ══════════════════════════════════════════════
 function computeScore(wind, waveH, tideCoef, isDescending, tideHeight, recentPrecip, hourSlot) {
-  let score = 100;
+  // Partir de 90 max — des conditions parfaites n'existent pas en mer
+  let penalties = 0;
+  let bonuses = 0;
   const reasons = [];
 
-  // ── VENT ── pénalité principale, progressive et sévère
-  // La chasse sous-marine nécessite une mer plate : >15 km/h ça commence à gêner
-  if (wind > 40)      { score -= 70; reasons.push('Vent violent (' + wind + ' km/h) ✕'); }
-  else if (wind > 30) { score -= 55; reasons.push('Vent fort (' + wind + ' km/h) ✕'); }
-  else if (wind > 20) { score -= 40; reasons.push('Vent modéré (' + wind + ' km/h)'); }
-  else if (wind > 15) { score -= 25; reasons.push('Vent frais (' + wind + ' km/h)'); }
-  else if (wind > prefs.windMax) { score -= 15; reasons.push('Vent (seuil dépassé)'); }
-  else if (wind <= 8) { score += 5;  reasons.push('Vent quasi nul ✓'); }
+  // ── VENT ── facteur le plus impactant
+  if (wind > 40)      { penalties += 75; reasons.push('Vent violent (' + wind + ' km/h) ✕'); }
+  else if (wind > 30) { penalties += 60; reasons.push('Vent fort (' + wind + ' km/h) ✕'); }
+  else if (wind > 20) { penalties += 42; reasons.push('Vent modéré (' + wind + ' km/h)'); }
+  else if (wind > 15) { penalties += 28; reasons.push('Vent frais (' + wind + ' km/h)'); }
+  else if (wind > prefs.windMax) { penalties += 16; reasons.push('Vent (seuil dépassé)'); }
+  else if (wind <= 8) { bonuses  +=  5; reasons.push('Vent quasi nul ✓'); }
 
-  // ── HOULE ── très pénalisante pour la visibilité et la sécurité
-  if (waveH > 1.5)         { score -= 50; reasons.push('Houle très forte (' + waveH.toFixed(1) + 'm) ✕'); }
-  else if (waveH > 1.0)    { score -= 35; reasons.push('Houle forte (' + waveH.toFixed(1) + 'm)'); }
-  else if (waveH > 0.6)    { score -= 20; reasons.push('Houle modérée (' + waveH.toFixed(1) + 'm)'); }
-  else if (waveH > prefs.waveMax) { score -= 10; reasons.push('Houle (seuil dépassé)'); }
-  else if (waveH <= 0.3)   { score += 5;  reasons.push('Mer plate ✓'); }
+  // ── HOULE ──
+  if (waveH > 1.5)      { penalties += 50; reasons.push('Houle très forte (' + waveH.toFixed(1) + 'm) ✕'); }
+  else if (waveH > 1.0) { penalties += 35; reasons.push('Houle forte (' + waveH.toFixed(1) + 'm)'); }
+  else if (waveH > 0.6) { penalties += 20; reasons.push('Houle modérée (' + waveH.toFixed(1) + 'm)'); }
+  else if (waveH > prefs.waveMax) { penalties += 10; reasons.push('Houle (seuil dépassé)'); }
+  else if (waveH <= 0.3){ bonuses  +=  5; reasons.push('Mer plate ✓'); }
 
-  // ── PLUIE ── turbidité + conditions dégradées
-  // La pluie ruisselle, trouble l'eau, et rend la chasse inconfortable
-  if (recentPrecip > 20)      { score -= 40; reasons.push('Fortes pluies (' + recentPrecip.toFixed(0) + 'mm) ✕'); }
-  else if (recentPrecip > 10) { score -= 25; reasons.push('Pluie significative (' + recentPrecip.toFixed(0) + 'mm)'); }
-  else if (recentPrecip > 3)  { score -= 12; reasons.push('Pluie légère (' + recentPrecip.toFixed(0) + 'mm)'); }
-  else if (recentPrecip === 0){ score += 3;  reasons.push('Pas de pluie ✓'); }
+  // ── PLUIE / TURBIDITÉ ──
+  if (recentPrecip > 20)      { penalties += 38; reasons.push('Fortes pluies (' + recentPrecip.toFixed(0) + 'mm) ✕'); }
+  else if (recentPrecip > 10) { penalties += 22; reasons.push('Pluie significative (' + recentPrecip.toFixed(0) + 'mm)'); }
+  else if (recentPrecip > 3)  { penalties += 10; reasons.push('Pluie légère (' + recentPrecip.toFixed(0) + 'mm)'); }
 
   // ── MARÉE : coefficient ──
-  if (tideCoef < 30)      { score -= 15; reasons.push('Coefficient très faible (' + tideCoef + ')'); }
-  else if (tideCoef < prefs.coefMin) { score -= 8; }
-  else if (tideCoef > 90) { score += 5;  reasons.push('Coeff. vives-eaux (' + tideCoef + ') ✓'); }
+  if (tideCoef < 30)               { penalties += 15; reasons.push('Coeff. très faible (' + tideCoef + ')'); }
+  else if (tideCoef < prefs.coefMin){ penalties +=  8; }
+  else if (tideCoef > 90)           { bonuses   +=  4; reasons.push('Vives-eaux (' + tideCoef + ') ✓'); }
 
-  // ── MARÉE : phase descendante ──
-  if (prefs.prefTideDesc && isDescending) {
-    score += 10; reasons.push('Marée descendante ✓');
-  } else if (prefs.prefTideDesc && !isDescending) {
-    score -= 8; reasons.push('Marée montante');
-  }
+  // ── MARÉE : phase ── (bonus/malus limités, la marée ne "rachète" pas un vent fort)
+  if (prefs.prefTideDesc && isDescending)  { bonuses   += 8; reasons.push('Marée descendante ✓'); }
+  else if (prefs.prefTideDesc && !isDescending) { penalties += 6; reasons.push('Marée montante'); }
 
-  // ── BONUS créneau préféré ──
+  // ── CRÉNEAU PRÉFÉRÉ ── léger bonus d'agrément
   const slotMap = { 'matin': [6,7,8,9], 'midi': [11,12,13,14], 'aprem': [15,16,17], 'soir': [18,19,20,21] };
   let inSlot = false;
   for (const slot of prefs.slots) {
-    if (slotMap[slot] && slotMap[slot].includes(hourSlot)) { inSlot = true; break; }
+    if (slotMap[slot]?.includes(hourSlot)) { inSlot = true; break; }
   }
-  if (inSlot) { score += 5; reasons.push('Créneau préféré ✓'); }
+  if (inSlot) { bonuses += 4; reasons.push('Créneau préféré ✓'); }
 
-  return { score: Math.max(0, Math.min(100, Math.round(score))), reasons };
+  // Score final : base 88, bonus plafonné à +12, total max = 95
+  const rawScore = 88 - penalties + Math.min(bonuses, 12);
+  return { score: Math.max(0, Math.min(95, Math.round(rawScore))), reasons };
 }
 
 function scoreLabel(score) {
@@ -2548,8 +2546,13 @@ function renderForecast() {
     const dayName = di === 0 ? "Aujourd'hui" : di === 1 ? 'Demain' : dayNames[d.getDay()];
     const dateStr = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
-    // Daily precip sum for display badge
+    // Précipitations : pour les jours futurs, les heures passées sont à 0 dans l'API
+    // On prend la somme des jours précédents (J-1 + J-2) pour estimer la turbidité résiduelle
     const dailyPrecip = precipArr[origIdx] || 0;
+    const prevDayPrecip1 = origIdx > 0 ? (precipArr[origIdx - 1] || 0) : 0;
+    const prevDayPrecip2 = origIdx > 1 ? (precipArr[origIdx - 2] || 0) : 0;
+    // Turbidité résiduelle : pluie du jour + 50% J-1 + 25% J-2 (l'eau se clarifie avec le temps)
+    const turbidityPrecip = dailyPrecip + prevDayPrecip1 * 0.5 + prevDayPrecip2 * 0.25;
 
     let slots = '';
     let dayBestScore = 0;
@@ -2578,7 +2581,7 @@ function renderForecast() {
         if (!found) { wind = 10; wave = 0.5; }
       }
 
-      const precip24h = getPrecip24h(hIdx);
+      const precip24h = di === 0 ? getPrecip24h(hIdx) : turbidityPrecip;
       dayWindMax = Math.max(dayWindMax, wind);
       dayWaveMax = Math.max(dayWaveMax, wave);
 
