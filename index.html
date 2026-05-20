@@ -2737,7 +2737,6 @@ function renderUpcomingAlerts() {
   container.innerHTML = html;
 
   // Schedule actual notifications
-  scheduleNotifications(alerts);
 }
 
 // ══════════════════════════════════════════════
@@ -2745,7 +2744,7 @@ function renderUpcomingAlerts() {
 // ══════════════════════════════════════════════
 async function requestNotifPermission() {
   if (!('Notification' in window)) {
-    alert('Votre navigateur ne supporte pas les notifications. Installez l\'app sur l\'écran d\'accueil pour activer cette fonctionnalité.');
+    alert("Votre navigateur ne supporte pas les notifications. Installez l'app sur l'écran d'accueil.");
     return;
   }
   const perm = await Notification.requestPermission();
@@ -2753,14 +2752,13 @@ async function requestNotifPermission() {
   if (perm === 'granted') {
     btn.textContent = '✅ Notifications activées';
     btn.style.borderColor = 'rgba(0,212,170,0.6)';
-    scheduleNotifications(null);
-    // Test notification
-    setTimeout(() => {
-      new Notification('Sandow — Test', {
-        body: 'Notifications activées ! Vous serez alerté avant chaque bonne fenêtre.',
-        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIiB3aWR0aD0iMTAyNCIgaGVpZ2h0PSIxMDI0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMEYyQjNCIj48L3N0b3A+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzA0MTAxQSI+PC9zdG9wPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CgogIAogIDxyZWN0IHdpZHRoPSIyNDAiIGhlaWdodD0iMjQwIiByeD0iNTYiIGZpbGw9InVybCgjYmcpIj48L3JlY3Q+CgogIAogIDxyZWN0IHg9IjIyIiB5PSIxMDgiIHdpZHRoPSIxNCIgaGVpZ2h0PSIyNCIgcng9IjIiIGZpbGw9IiNFOEVFRjEiPjwvcmVjdD4KICA8cmVjdCB4PSIyMDQiIHk9IjEwOCIgd2lkdGg9IjE0IiBoZWlnaHQ9IjI0IiByeD0iMiIgZmlsbD0iI0U4RUVGMSI+PC9yZWN0PgoKICAKICA8bGluZSB4MT0iMTgiIHkxPSIxMDAiIHgyPSIxOCIgeTI9IjE0MCIgc3Ryb2tlPSIjRThFRUYxIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC40Ij48L2xpbmU+CiAgPGxpbmUgeDE9IjIyMiIgeTE9IjEwMCIgeDI9IjIyMiIgeTI9IjE0MCIgc3Ryb2tlPSIjRThFRUYxIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC40Ij48L2xpbmU+CgogIAogIDxwYXRoIGQ9Ik0zNiAxMTYgUTEyMCA5NiAyMDQgMTE2IiBzdHJva2U9IiNGRjVBMUYiIHN0cm9rZS13aWR0aD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L3BhdGg+CiAgPHBhdGggZD0iTTM2IDEyNCBRMTIwIDE0NCAyMDQgMTI0IiBzdHJva2U9IiNGRjVBMUYiIHN0cm9rZS13aWR0aD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L3BhdGg+CgogIAogIDxwYXRoIGQ9Ik0zNiAxMTYgUTEyMCA5NiAyMDQgMTE2IiBzdHJva2U9IiNGRkI0OEEiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBvcGFjaXR5PSIwLjYiPjwvcGF0aD4KPC9zdmc+'
-      });
-    }, 500);
+    await registerPeriodicSync();
+    syncScheduleToSW();
+    new Notification('Sandow — Notifications activées ✓', {
+      body: 'Vous serez alerté J-1 et J-2 avant chaque bonne fenêtre de chasse.',
+      icon: './icon_192.png',
+      badge: './icon_192.png'
+    });
   } else {
     btn.textContent = '❌ Permission refusée';
     btn.style.borderColor = 'rgba(255,71,87,0.4)';
@@ -2768,47 +2766,42 @@ async function requestNotifPermission() {
   }
 }
 
-let notifTimers = [];
-
-function scheduleNotifications(alerts) {
-  if (Notification.permission !== 'granted') return;
-  // Clear previous timers
-  notifTimers.forEach(t => clearTimeout(t));
-  notifTimers = [];
-
-  if (!alerts) return;
-  const now = Date.now();
-
-  alerts.slice(0, 3).forEach(a => {
-    const alertTime = a.dt.getTime() - 2 * 3600000; // 2h before
-    const delay = alertTime - now;
-    if (delay > 0 && delay < 7 * 24 * 3600000) {
-      const t = setTimeout(() => {
-        const sl = scoreLabel(a.score);
-        new Notification(`Sandow — ${sl.text} dans 2h !`, {
-          body: `Score ${a.score}/100 · Vent ${a.wind} km/h · Houle ${a.wave} m\nC'est le moment de préparer le matériel !`,
-          icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIiB3aWR0aD0iMTAyNCIgaGVpZ2h0PSIxMDI0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMEYyQjNCIj48L3N0b3A+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzA0MTAxQSI+PC9zdG9wPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CgogIAogIDxyZWN0IHdpZHRoPSIyNDAiIGhlaWdodD0iMjQwIiByeD0iNTYiIGZpbGw9InVybCgjYmcpIj48L3JlY3Q+CgogIAogIDxyZWN0IHg9IjIyIiB5PSIxMDgiIHdpZHRoPSIxNCIgaGVpZ2h0PSIyNCIgcng9IjIiIGZpbGw9IiNFOEVFRjEiPjwvcmVjdD4KICA8cmVjdCB4PSIyMDQiIHk9IjEwOCIgd2lkdGg9IjE0IiBoZWlnaHQ9IjI0IiByeD0iMiIgZmlsbD0iI0U4RUVGMSI+PC9yZWN0PgoKICAKICA8bGluZSB4MT0iMTgiIHkxPSIxMDAiIHgyPSIxOCIgeTI9IjE0MCIgc3Ryb2tlPSIjRThFRUYxIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC40Ij48L2xpbmU+CiAgPGxpbmUgeDE9IjIyMiIgeTE9IjEwMCIgeDI9IjIyMiIgeTI9IjE0MCIgc3Ryb2tlPSIjRThFRUYxIiBzdHJva2Utd2lkdGg9IjEuNSIgb3BhY2l0eT0iMC40Ij48L2xpbmU+CgogIAogIDxwYXRoIGQ9Ik0zNiAxMTYgUTEyMCA5NiAyMDQgMTE2IiBzdHJva2U9IiNGRjVBMUYiIHN0cm9rZS13aWR0aD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L3BhdGg+CiAgPHBhdGggZD0iTTM2IDEyNCBRMTIwIDE0NCAyMDQgMTI0IiBzdHJva2U9IiNGRjVBMUYiIHN0cm9rZS13aWR0aD0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L3BhdGg+CgogIAogIDxwYXRoIGQ9Ik0zNiAxMTYgUTEyMCA5NiAyMDQgMTE2IiBzdHJva2U9IiNGRkI0OEEiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBvcGFjaXR5PSIwLjYiPjwvcGF0aD4KPC9zdmc+'
-        });
-      }, delay);
-      notifTimers.push(t);
+async function registerPeriodicSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if ('periodicSync' in reg) {
+      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (status.state === 'granted') {
+        await reg.periodicSync.register('sandow-check', { minInterval: 4 * 60 * 60 * 1000 });
+      }
     }
-  });
-
-  // Morning summary at 7h tomorrow
-  const tomorrow7 = new Date();
-  tomorrow7.setDate(tomorrow7.getDate() + 1);
-  tomorrow7.setHours(7, 0, 0, 0);
-  const morningDelay = tomorrow7.getTime() - now;
-  if (morningDelay > 0 && document.getElementById('alert-morning')?.checked !== false) {
-    const t = setTimeout(() => {
-      const best = findBestWindowToday();
-      new Notification('Sandow — Résumé du jour', {
-        body: best ? `Meilleur créneau aujourd'hui : ${best.label} (score ${best.score}/100)` : 'Conditions difficiles aujourd\'hui.',
-      });
-    }, morningDelay);
-    notifTimers.push(t);
-  }
+  } catch(e) { console.log('Periodic Sync:', e.message); }
 }
+
+function syncScheduleToSW() {
+  if (!('serviceWorker' in navigator)) return;
+  const schedule = loadSchedule();
+  navigator.serviceWorker.ready.then(reg => {
+    reg.active?.postMessage({
+      type: 'SAVE_SCHEDULE',
+      schedule,
+      prefs: { lat: prefs.lat, lon: prefs.lon, cityName: prefs.cityName,
+               windMax: prefs.windMax, waveMax: prefs.waveMax, coefMin: prefs.coefMin }
+    });
+  });
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    syncScheduleToSW();
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.active?.postMessage({ type: 'CHECK_NOW' });
+    });
+  }
+});
+
+let notifTimers = [];
 
 // ══════════════════════════════════════════════
 // FALLBACK (when API fails / offline)
@@ -2862,7 +2855,24 @@ function renderWithFallback() {
 // ══════════════════════════════════════════════
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    // Détecter une mise à jour du SW et recharger automatiquement
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+          // Nouveau SW activé → recharger pour avoir le dernier index.html
+          window.location.reload();
+        }
+      });
+    });
+  }).catch(() => {});
+
+  // Si le SW prend le contrôle en cours de session → recharger
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; window.location.reload(); }
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -3279,63 +3289,9 @@ function renderScheduleUpcoming() {
 }
 
 function scheduleAdvanceNotifications(upcoming, schedule) {
-  if (Notification.permission !== 'granted') return;
-  notifTimers.forEach(t => clearTimeout(t));
-  notifTimers = [];
-
-  const now = Date.now();
-  const slotLabels = { matin: 'Matin', midi: 'Midi', aprem: 'Après-midi', soir: 'Soir' };
-
-  upcoming.forEach(u => {
-    if (u.score < schedule.scoreMin) return;
-    const sl = scoreLabel(u.score);
-    const icon = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIiB3aWR0aD0iMTAyNCIgaGVpZ2h0PSIxMDI0Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMEYyQjNCIj48L3N0b3A+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzA0MTAxQSI+PC9zdG9wPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CgogIAogIDxyZWN0IHdpZHRoPSIyNDAiIGhlaWdodD0iMjQwIiByeD0iNTYiIGZpbGw9InVybCgjYmcpIj48L3JlY3Q+CgogIAogIDxsaW5lIHgxPSI0MCIgeTE9IjEyMCIgeDI9IjIxNiIgeTI9IjEyMCIgc3Ryb2tlPSIjRThFRUYxIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPgogIAogIDxwYXRoIGQ9Ik0gMjE2IDExMyBMIDIzMCAxMjAgTCAyMTYgMTI3IFoiIGZpbGw9IiNFOEVFRjEiPjwvcGF0aD4KICAKICA8cmVjdCB4PSI0MCIgeT0iMTE1IiB3aWR0aD0iNiIgaGVpZ2h0PSIxMCIgZmlsbD0iI0U4RUVGMSI+PC9yZWN0PgoKICAKICA8Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMjAiIHI9IjY0IiBzdHJva2U9IiNGRjVBMUYiIHN0cm9rZS13aWR0aD0iMjIiIGZpbGw9Im5vbmUiPjwvY2lyY2xlPgoKICAKICA8Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMjAiIHI9IjYiIGZpbGw9IiNGRjVBMUYiPjwvY2lyY2xlPgoKICAKICA8cGF0aCBkPSJNIDc2IDk0IEEgNTQgNTQgMCAwIDEgMTIwIDY2IiBzdHJva2U9IiNGRkI0OEEiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBvcGFjaXR5PSIwLjciPjwvcGF0aD4KPC9zdmc+';
-    // J-2 at 8h AM
-    if (schedule.notice.includes('j2')) {
-      const j2Date = new Date(u.dt);
-      j2Date.setDate(j2Date.getDate() - 2);
-      j2Date.setHours(8, 0, 0, 0);
-      const delay = j2Date.getTime() - now;
-      if (delay > 0) {
-        notifTimers.push(setTimeout(() => {
-          new Notification(`🎯 Sandow — Bonne sortie dans 2 jours !`, {
-            body: `${slotLabels[u.slot]} ${u.dt.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'short'})} · Score ${u.score}/100\nVent ${u.wind} km/h · Houle ${u.wave} m`,
-            icon
-          });
-        }, delay));
-      }
-    }
-
-    // J-1 at 18h
-    if (schedule.notice.includes('j1')) {
-      const j1Date = new Date(u.dt);
-      j1Date.setDate(j1Date.getDate() - 1);
-      j1Date.setHours(18, 0, 0, 0);
-      const delay = j1Date.getTime() - now;
-      if (delay > 0) {
-        notifTimers.push(setTimeout(() => {
-          new Notification(`🎯 Sandow — Sortie demain ${slotLabels[u.slot].toLowerCase()} !`, {
-            body: `${sl.text} · Score ${u.score}/100\nVent ${u.wind} km/h · Houle ${u.wave} m · Prépare le matos !`,
-            icon
-          });
-        }, delay));
-      }
-    }
-
-    // Same day 2h before
-    if (schedule.notice.includes('same')) {
-      const sameDay = new Date(u.dt.getTime() - 2 * 3600000);
-      const delay = sameDay.getTime() - now;
-      if (delay > 0) {
-        notifTimers.push(setTimeout(() => {
-          new Notification(`🎯 Sandow — C'est l'heure dans 2h !`, {
-            body: `${slotLabels[u.slot]} · Score ${u.score}/100\nVent ${u.wind} km/h · Houle ${u.wave} m`,
-            icon
-          });
-        }, delay));
-      }
-    }
-  });
+  // Les alertes sont maintenant gérées par le Service Worker (sw.js)
+  // On synchronise les préférences pour que le SW puisse travailler en arrière-plan
+  syncScheduleToSW();
 }
 
 // ══════════════════════════════════════════════
@@ -3350,7 +3306,6 @@ async function init() {
   prefs.slots = schedule.slots;
   updatePrefSlotsSummary();
   registerSW();
-
   const statuses = [
     'Connexion météo marine…',
     'Récupération des données de vagues…',
@@ -3374,10 +3329,12 @@ async function init() {
   renderSpots();
   renderScheduleUpcoming();
 
-  // Check notif permission
+  // Sync prefs/schedule vers le Service Worker pour alertes arrière-plan
   if (Notification.permission === 'granted') {
     const btn = document.getElementById('notif-btn');
     if (btn) { btn.textContent = '✅ Notifications activées'; btn.style.borderColor = 'rgba(0,212,170,0.6)'; }
+    syncScheduleToSW();
+    registerPeriodicSync();
   }
 
   // Auto-refresh every 30 minutes
