@@ -32,6 +32,29 @@
       "purpose": "any"
     }
   ],
+  "screenshots": [
+    {
+      "src": "./screenshot-score.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Score des conditions en temps réel"
+    },
+    {
+      "src": "./screenshot-forecast.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Prévisions sur 7 jours"
+    },
+    {
+      "src": "./screenshot-schedule.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mes créneaux de chasse personnalisés"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Score actuel",
