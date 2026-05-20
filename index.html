@@ -2223,10 +2223,56 @@ function renderDashboard() {
     .reduce((a, b) => a + (b || 0), 0);
 
   const sst = estimateSST(prefs.lat, prefs.lon);
-  const vis = estimateVisibility(waveH, recentPrecip);
 
-  const { score, reasons } = computeScore(wind, waveH, tideData.coef, tideData.isDescending,
-    tideData.currentHeight, recentPrecip, nowH);
+  // ── Score : même logique que les prévisions ──
+  // On cherche le meilleur score parmi les créneaux PRÉFÉRÉS restant aujourd'hui
+  // (pas le score de l'heure actuelle qui crée un écart avec la vue Prévisions)
+  const slotDef = {
+    'matin': { hours: [6,7,8,9],     label: '6h–10h'  },
+    'midi':  { hours: [11,12,13,14], label: '11h–14h' },
+    'aprem': { hours: [15,16,17],    label: '15h–17h' },
+    'soir':  { hours: [18,19,20,21], label: '18h–21h' }
+  };
+
+  let bestScore = 0, bestReasons = [], bestWind = wind, bestWave = waveH, bestSlotLabel = '';
+  let currentScore = 0, currentReasons = [];
+
+  // Score heure actuelle (pour les métriques affichées)
+  const currentTide = computeTideForDay(prefs.lat, prefs.lon, todayStr, nowH);
+  const cur = computeScore(wind, waveH, currentTide.coef, currentTide.isDescending,
+    currentTide.currentHeight, recentPrecip, nowH);
+  currentScore = cur.score;
+  currentReasons = cur.reasons;
+
+  // Meilleur créneau préféré restant aujourd'hui
+  let hasPrefSlot = false;
+  prefs.slots.forEach(slotKey => {
+    const def = slotDef[slotKey];
+    if (!def) return;
+    def.hours.forEach(h => {
+      if (h < nowH) return; // passé
+      const hIdx = hourlyTimes.findIndex(t => t.startsWith(todayStr) && parseInt(t.slice(11,13)) === h);
+      if (hIdx < 0) return;
+      const w = Math.round(weatherData.atmo.hourly?.wind_speed_10m?.[hIdx] || wind);
+      const wv = parseFloat((weatherData.marine.hourly?.wave_height?.[hIdx] || waveH).toFixed(1));
+      const p = (weatherData.atmo.hourly?.precipitation || [])
+        .slice(Math.max(0, hIdx-24), hIdx).reduce((a,b) => a+(b||0), 0);
+      const t = computeTideForDay(prefs.lat, prefs.lon, todayStr, h);
+      const { score: s, reasons: r } = computeScore(w, wv, t.coef, t.isDescending, t.currentHeight, p, h);
+      if (s > bestScore) {
+        bestScore = s; bestReasons = r; bestWind = w; bestWave = wv;
+        bestSlotLabel = `${h}h (${def.label})`;
+      }
+      hasPrefSlot = true;
+    });
+  });
+
+  // Si aucun créneau préféré restant → fallback sur le score actuel
+  const score = hasPrefSlot ? bestScore : currentScore;
+  const reasons = hasPrefSlot ? bestReasons : currentReasons;
+  const displayWind = hasPrefSlot ? bestWind : wind;
+  const displayWave = hasPrefSlot ? bestWave : waveH;
+  const vis = estimateVisibility(displayWave, recentPrecip);
 
   const sl = scoreLabel(score);
 
@@ -2241,7 +2287,6 @@ function renderDashboard() {
   document.getElementById('score-num').style.color = sl.color;
   arc.style.stroke = sl.color;
   document.getElementById('score-label').textContent = sl.text;
-  document.getElementById('score-detail').textContent = reasons.slice(0, 2).join(' · ');
 
   // Alert banner
   const alertEl = document.getElementById('main-alert');
@@ -2276,15 +2321,15 @@ function renderDashboard() {
     el.className = 'metric-status ' + statusClass;
   };
 
-  const windOk = wind <= 8 ? 'ok' : wind <= prefs.windMax ? 'ok' : wind <= 25 ? 'warn' : 'bad';
-  const waveOk = waveH <= 0.4 ? 'ok' : waveH <= prefs.waveMax ? 'ok' : waveH <= 1.2 ? 'warn' : 'bad';
+  const windOk = displayWind <= 8 ? 'ok' : displayWind <= prefs.windMax ? 'ok' : displayWind <= 25 ? 'warn' : 'bad';
+  const waveOk = displayWave <= 0.4 ? 'ok' : displayWave <= prefs.waveMax ? 'ok' : displayWave <= 1.2 ? 'warn' : 'bad';
   const visOk = vis >= 7 ? 'ok' : vis >= 4 ? 'warn' : 'bad';
   const tempOk = sst >= 18 ? 'ok' : sst >= 14 ? 'warn' : 'bad';
 
-  setMetric('wind-val', wind, 'wind-status', windOk,
-    wind <= 8 ? 'Idéal' : wind <= prefs.windMax ? 'Acceptable' : wind <= 25 ? 'Modéré' : 'Fort');
-  setMetric('wave-val', waveH.toFixed(1), 'wave-status', waveOk,
-    waveH <= 0.3 ? 'Plate' : waveH <= 0.6 ? 'Légère' : waveH <= 1.2 ? 'Modérée' : 'Forte');
+  setMetric('wind-val', displayWind, 'wind-status', windOk,
+    displayWind <= 8 ? 'Idéal' : displayWind <= prefs.windMax ? 'Acceptable' : displayWind <= 25 ? 'Modéré' : 'Fort');
+  setMetric('wave-val', displayWave.toFixed(1), 'wave-status', waveOk,
+    displayWave <= 0.3 ? 'Plate' : displayWave <= 0.6 ? 'Légère' : displayWave <= 1.2 ? 'Modérée' : 'Forte');
   setMetric('vis-val', vis, 'vis-status', visOk,
     vis >= 8 ? 'Excellente' : vis >= 5 ? 'Bonne' : vis >= 3 ? 'Réduite' : 'Mauvaise');
   setMetric('temp-val', sst.toFixed(1), 'temp-status', tempOk,
@@ -2293,10 +2338,14 @@ function renderDashboard() {
   // Color metric card borders
   ['wind', 'wave', 'vis', 'temp'].forEach((id, i) => {
     const cards = document.querySelectorAll('.metric-card');
-    if (cards[i]) {
-      cards[i].className = 'metric-card ' + [windOk, waveOk, visOk, tempOk][i];
-    }
+    if (cards[i]) cards[i].className = 'metric-card ' + [windOk, waveOk, visOk, tempOk][i];
   });
+
+  // Sous-titre du score : précise quel créneau est affiché
+  document.getElementById('score-detail').textContent =
+    hasPrefSlot && bestSlotLabel
+      ? `Meilleur créneau : ${bestSlotLabel} · ` + reasons.slice(0,1).join('')
+      : reasons.slice(0, 2).join(' · ');
 
   // Tide chart
   renderTideChart();
